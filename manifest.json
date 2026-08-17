@@ -2,7 +2,7 @@
   "name": "Uçuş Öncesi Checklist",
   "short_name": "Checklist",
   "description": "Sahada kullanılan sabit kanat İHA uçuş öncesi kontrol listesi",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

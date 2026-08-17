@@ -1,6 +1,7 @@
-var CACHE_VERSION = "v1";
+var CACHE_VERSION = "v2";
 var CACHE_NAME = "ucus-oncesi-checklist-" + CACHE_VERSION;
 var ASSETS = [
+  "./",
   "./index.html",
   "./manifest.json",
   "./icon-192.png",

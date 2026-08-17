@@ -6,9 +6,9 @@
 <title>Uçuş Öncesi Checklist</title>
 <meta name="theme-color" content="#EDE7DA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#14181A" media="(prefers-color-scheme: dark)">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <style>
 /* ---------- tokens ---------- */
 :root{
@@ -1434,7 +1434,7 @@ if(document.readyState === "loading"){
 
 if("serviceWorker" in navigator && location.protocol !== "file:"){
   window.addEventListener("load", function(){
-    navigator.serviceWorker.register("sw.js").catch(function(){});
+    navigator.serviceWorker.register("./sw.js").catch(function(){});
   });
 }
 
