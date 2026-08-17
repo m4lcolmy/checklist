@@ -36,7 +36,9 @@ function renderThemePicker(){
   });
 }
 
-var DEFAULT_TEMPLATE = {"name": "Uçuş Öncesi Checklist", "version": 1, "sections": [{"id": "s1", "title": "HAZIRLIK", "phase": "hazirlik", "blocking": false, "items": [{"id": "s1i1", "text": "Pusula kalibrasyonları yapıldı", "critical": false}, {"id": "s1i2", "text": "Uçak bataryaları ve kumanda (verici) bataryası tam şarj", "critical": false}, {"id": "s1i3", "text": "Yer istasyonu (GCS) bilgisayarının şarjı tam", "critical": false}, {"id": "s1i4", "text": "Görev planı (mission) Mission Planner'a yüklendi ve waypoint'ler gözden geçirildi", "critical": false}, {"id": "s1i5", "text": "Yedek pervane", "critical": false}, {"id": "s1i6", "text": "Yedek uçuş bataryası (şarjlı) ve yedek kumanda pili", "critical": false}, {"id": "s1i7", "text": "Yedek vida/somun, control horn", "critical": false}]}, {"id": "s1a", "title": "TAKIM ÇANTASI", "phase": "hazirlik", "blocking": false, "items": [{"id": "s1ai1", "text": "Yedek pervane", "critical": false}, {"id": "s1ai2", "text": "Yedek GPS", "critical": false}, {"id": "s1ai3", "text": "Uçak Pili / İnverter Pili", "critical": false}, {"id": "s1ai4", "text": "Yedek Pil", "critical": false}, {"id": "s1ai5", "text": "Servo Yekeler", "critical": false}, {"id": "s1ai6", "text": "Pervane Somunları", "critical": false}, {"id": "s1ai7", "text": "Yedek Somun", "critical": false}, {"id": "s1ai8", "text": "Pervane Sıkma Teli", "critical": false}, {"id": "s1ai9", "text": "Tornavida Seti", "critical": false}, {"id": "s1ai10", "text": "Yıldız Tornavida", "critical": false}, {"id": "s1ai11", "text": "Pense", "critical": false}, {"id": "s1ai12", "text": "Karga Burun", "critical": false}, {"id": "s1ai13", "text": "Yan Keski", "critical": false}, {"id": "s1ai14", "text": "Maket Bıçağı", "critical": false}, {"id": "s1ai15", "text": "Matkap", "critical": false}, {"id": "s1ai16", "text": "Multimetre", "critical": false}, {"id": "s1ai17", "text": "Su Terazisi", "critical": false}, {"id": "s1ai18", "text": "Hızlı Yapıştırıcı", "critical": false}, {"id": "s1ai19", "text": "Bantlar (Kağıt, Lifli, Çift Taraflı)", "critical": false}, {"id": "s1ai20", "text": "Kelepçe", "critical": false}, {"id": "s1ai21", "text": "Cırt Cırt", "critical": false}, {"id": "s1ai22", "text": "Lastik", "critical": false}, {"id": "s1ai23", "text": "Silikon Çubuklar", "critical": false}, {"id": "s1ai24", "text": "Vida Kutusu", "critical": false}, {"id": "s1ai25", "text": "USB Kablo (Anten Tracker için)", "critical": false}, {"id": "s1ai26", "text": "Çakmak", "critical": false}, {"id": "s1ai27", "text": "İnverter", "critical": false}, {"id": "s1ai28", "text": "2x Tabure", "critical": false}]}, {"id": "s2", "title": "SAHADA — MONTAJ SONRASI", "phase": "saha", "blocking": false, "items": [{"id": "s2i1", "text": "Kanat/kuyruk bağlantı pimleri ve kilitler tam oturmuş, boşluk yok", "critical": false}, {"id": "s2i2", "text": "Menteşeler (aileron/elevatör/rudder) elle kontrol — yırtık/gevşek yok", "critical": false}, {"id": "s2i3", "text": "Pervane/motor tutturması sıkı, pervane hasarsız", "critical": false}, {"id": "s2i4", "text": "Motor dönüş yönü doğru (kısa gaz testiyle doğrulandı)", "critical": false}, {"id": "s2i5", "text": "Ağırlık merkezi (CG) elle dengeleme testiyle doğru noktada", "critical": false}, {"id": "s2i6", "text": "GPS/RC/video anten bağlantıları sağlam, GPS anteni açık gökyüzüne bakıyor", "critical": false}, {"id": "s2i7", "text": "Kalkış alanı ve rota üzerinde engel/insan yok", "critical": false}, {"id": "s2i8", "text": "Rüzgar yönü belirlendi, kalkış rüzgara karşı planlandı", "critical": false}]}, {"id": "s3", "title": "YER İSTASYONU / YAZILIM", "phase": "saha", "blocking": false, "items": [{"id": "s3i1", "text": "Raspberry Pi - Pixhawk UART bağlantısı kontrol edildi", "critical": false}, {"id": "s3i2", "text": "Görev bilgisayarı (RPi) açıldı, wifi bağlantısı ssh ile test edildi, görüntü işleme yazılımı başlatıldı ve çalıştığı doğrulandı", "critical": false}, {"id": "s3i3", "text": "Mission Planner'da uçağın GPS konumu (harita üzerinde ikon) geldi", "critical": false}, {"id": "s3i4", "text": "Mission Planner'da video aktarımı/HUD görüntüsü düzgün geliyor", "critical": false}, {"id": "s3i5", "text": "Anten tracker home pozisyonu doğru girildi", "critical": false}, {"id": "s3i6", "text": "Anten tracker uçağı takip ediyor (kısa test hareketiyle doğrulandı)", "critical": false}, {"id": "s3i7", "text": "OBS'de uçuş öncesi ekran kaydı başlatıldı", "critical": false}]}, {"id": "s4", "title": "ARM ÖNCESİ", "phase": "saha", "blocking": true, "items": [{"id": "s4i1", "text": "Stabilize modda elle eğ: sağ kanat aşağı → sağ aileron YUKARI (gözle doğrula)", "critical": true}, {"id": "s4i2", "text": "Burun aşağı hareket ettir → elevatör YUKARI (gözle doğrula)", "critical": true}, {"id": "s4i3", "text": "Rudder: sağ komut → kuyruk sağa (gözle doğrula)", "critical": true}, {"id": "s4i4", "text": "GPS, Pusula, Servo gibi ayar gerektiren parça değiştiyse konfigürasyonu tekrar yapıldı", "critical": true}, {"id": "s4i5", "text": "Dataflash log kaydı başladı (hata mesajı yok)", "critical": false}, {"id": "s4i6", "text": "Manuel kumanda kontrolleri yapıldı", "critical": false}, {"id": "s4i7", "text": "Uçuş modu anahtarı tüm pozisyonlarda doğru modu gösteriyor (TX/MP'den kontrol)", "critical": false}, {"id": "s4i8", "text": "Gaz kolu boşta motor idle/duruyor, arm-disarm doğru çalışıyor", "critical": false}, {"id": "s4i9", "text": "GPS fix alındı, HDOP (1-2 arası) kabul edilebilir seviyede (MP'den bak)", "critical": false}, {"id": "s4i10", "text": "Batarya voltajı GCS üzerinden kontrol edildi", "critical": false}, {"id": "s4i11", "text": "Failsafe (RC/GCS/batarya) ayarları aktif ve biliniyor", "critical": false}]}, {"id": "s5", "title": "UÇUŞ SONRASI", "phase": "ucus-sonrasi", "blocking": false, "items": [{"id": "s5i1", "text": "Batarya sıcaklığı ve hasar kontrolü yapıldı", "critical": false}, {"id": "s5i2", "text": "OBS kaydı durduruldu, dosya kontrol edildi", "critical": false}, {"id": "s5i3", "text": "Log indirildi ve yedeklendi", "critical": false}, {"id": "s5i4", "text": "Görev bilgisayarı (RPi) terminalden düzgün kapatıldı (fişten çekmeden önce)", "critical": false}, {"id": "s5i5", "text": "Gövde/kanat/kuyrukta görünür hasar taraması yapıldı", "critical": false}, {"id": "s5i6", "text": "Uçuş notu: süre, mod, gözlemlenen sorun (varsa) yazıldı", "critical": false}]}]};
+// Defaults now live in js/default-template.js (loaded before this file) so
+// they're easy to find and edit without wading through app logic.
+var DEFAULT_TEMPLATE = window.DEFAULT_TEMPLATE;
 
 function deepClone(o){ return typeof structuredClone==="function"?structuredClone(o):JSON.parse(JSON.stringify(o)); }
 function loadJSON(key, fallback){
@@ -65,9 +67,22 @@ function formatTime(ts){
   return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 }
 
+function templateVersion(tpl){
+  return (tpl && typeof tpl.version === "number") ? tpl.version : 0;
+}
+function filterVisibleSections(sections){
+  return (sections||[]).filter(function(s){ return !s.hidden; });
+}
+function visibleSectionsList(tpl){
+  return filterVisibleSections(tpl && tpl.sections);
+}
+function visibleItemsList(section){
+  return (section && section.items || []).filter(function(it){ return !it.hidden; });
+}
+
 function allItems(tpl){
   var out = [];
-  tpl.sections.forEach(function(s){ s.items.forEach(function(it){ out.push({section:s, item:it}); }); });
+  visibleSectionsList(tpl).forEach(function(s){ visibleItemsList(s).forEach(function(it){ out.push({section:s, item:it}); }); });
   return out;
 }
 
@@ -101,6 +116,14 @@ function ensureRunChecks(tpl, run){
   allItems(tpl).forEach(function(pair){
     if(!run.checks[pair.item.id]) run.checks[pair.item.id] = { ok:false, note:"", ts:null };
   });
+}
+
+function runHasProgress(run){
+  if(!run || !run.checks) return false;
+  for(var k in run.checks){
+    if(run.checks[k] && run.checks[k].ok) return true;
+  }
+  return false;
 }
 
 /* ============================================================
@@ -154,6 +177,168 @@ function importTemplateFromWorkbook(wb, name){
 }
 
 /* ============================================================
+   Template versioning / merge
+   ============================================================ */
+var LS_NOTICE_DISMISSED = "checklist:noticeDismissedVersion";
+
+function mergeSectionItems(defSection, storedSection, changes){
+  var storedItems = (storedSection && storedSection.items) || [];
+  var result = storedItems.slice();
+  var storedIds = {};
+  result.forEach(function(it){ storedIds[it.id] = true; });
+
+  var cursor = -1;
+  defSection.items.forEach(function(defItem){
+    if(storedIds[defItem.id]){
+      cursor = result.findIndex(function(it){ return it.id === defItem.id; });
+    } else {
+      var newItem = { id: defItem.id, text: defItem.text, critical: !!defItem.critical };
+      result.splice(cursor+1, 0, newItem);
+      cursor = cursor+1;
+      changes.addedItems.push({ sectionTitle: defSection.title, text: defItem.text });
+    }
+  });
+
+  var defaultIds = {};
+  defSection.items.forEach(function(it){ defaultIds[it.id] = true; });
+  result = result.map(function(it){
+    if(!defaultIds[it.id] && !/^u-/.test(it.id)){
+      if(!it.hidden) changes.hiddenItems.push({ sectionTitle: defSection.title, text: it.text });
+      return Object.assign({}, it, { hidden:true });
+    }
+    if(it.hidden && defaultIds[it.id]){
+      var copy = Object.assign({}, it);
+      delete copy.hidden;
+      return copy;
+    }
+    return it;
+  });
+  return result;
+}
+
+function mergeTemplate(defaultTpl, storedTpl){
+  var changes = { addedSections:[], addedItems:[], hiddenSections:[], hiddenItems:[] };
+  var storedSections = (storedTpl && storedTpl.sections) || [];
+  var resultSections = storedSections.slice();
+  var storedSecIds = {};
+  resultSections.forEach(function(s){ storedSecIds[s.id] = true; });
+
+  var cursor = -1;
+  defaultTpl.sections.forEach(function(defSec){
+    if(storedSecIds[defSec.id]){
+      var idx = resultSections.findIndex(function(s){ return s.id === defSec.id; });
+      var mergedItems = mergeSectionItems(defSec, resultSections[idx], changes);
+      resultSections[idx] = Object.assign({}, resultSections[idx], { items: mergedItems });
+      cursor = idx;
+    } else {
+      var newSection = deepClone(defSec);
+      newSection.items = newSection.items.map(function(it){ return { id: it.id, text: it.text, critical: !!it.critical }; });
+      resultSections.splice(cursor+1, 0, newSection);
+      cursor = cursor+1;
+      changes.addedSections.push(newSection.title);
+    }
+  });
+
+  var defaultSecIds = {};
+  defaultTpl.sections.forEach(function(s){ defaultSecIds[s.id] = true; });
+  resultSections = resultSections.map(function(s){
+    if(!defaultSecIds[s.id] && !/^u-/.test(s.id)){
+      if(!s.hidden) changes.hiddenSections.push(s.title);
+      return Object.assign({}, s, { hidden:true });
+    }
+    if(s.hidden && defaultSecIds[s.id]){
+      var copy = Object.assign({}, s);
+      delete copy.hidden;
+      return copy;
+    }
+    return s;
+  });
+
+  var merged = { name: defaultTpl.name, version: defaultTpl.version, sections: resultSections };
+  return { template: merged, changes: changes };
+}
+
+function buildChangeSummary(changes, fromV, toV, deferred){
+  var parts = [];
+  if(changes.addedSections.length){
+    parts.push(changes.addedSections.length + " yeni bölüm eklendi (" + changes.addedSections.join(", ") + ")");
+  }
+  if(changes.addedItems.length){
+    var bySec = {};
+    var order = [];
+    changes.addedItems.forEach(function(x){
+      if(!bySec[x.sectionTitle]){ bySec[x.sectionTitle] = 0; order.push(x.sectionTitle); }
+      bySec[x.sectionTitle]++;
+    });
+    var itemParts = order.map(function(t){ return "\""+t+"\"'e "+bySec[t]+" yeni madde"; });
+    parts.push(itemParts.join(", ") + " eklendi");
+  }
+  if(changes.hiddenSections.length){
+    parts.push(changes.hiddenSections.length + " bölüm kaldırıldı");
+  }
+  if(changes.hiddenItems.length){
+    parts.push(changes.hiddenItems.length + " madde kaldırıldı");
+  }
+  var msg = "Şablon güncellendi (v"+fromV+" → v"+toV+")";
+  msg += parts.length ? (": " + parts.join("; ") + ".") : ".";
+  if(deferred) msg += " Değişiklikler bir sonraki uçuşta uygulanacak.";
+  return msg;
+}
+
+function queueNotice(message, version){
+  var dismissed = loadJSON(LS_NOTICE_DISMISSED, 0);
+  if(version <= dismissed) return;
+  state.activeNotice = { message: message, version: version };
+  renderNotice();
+}
+function dismissNotice(){
+  if(state.activeNotice) saveJSON(LS_NOTICE_DISMISSED, state.activeNotice.version);
+  state.activeNotice = null;
+  renderNotice();
+}
+function renderNotice(){
+  var el = document.getElementById("template-notice");
+  var textEl = document.getElementById("template-notice-text");
+  if(!el || !textEl) return;
+  if(state.activeNotice){
+    textEl.textContent = state.activeNotice.message;
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+  }
+}
+function renderTemplateVersionBadge(){
+  var el = document.getElementById("tpl-version-badge");
+  if(el) el.textContent = "Şablon v" + templateVersion(state.template);
+}
+
+function applyPendingTemplateMerge(){
+  var fromV = templateVersion(state.template);
+  var toV = templateVersion(DEFAULT_TEMPLATE);
+  if(toV <= fromV) return false;
+  var res = mergeTemplate(DEFAULT_TEMPLATE, state.template);
+  state.template = res.template;
+  persistTemplate();
+  state.pendingTemplateUpdate = false;
+  queueNotice(buildChangeSummary(res.changes, fromV, toV, false), toV);
+  renderTemplateVersionBadge();
+  return true;
+}
+
+function checkTemplateUpdate(hasProgress){
+  var fromV = templateVersion(state.template);
+  var toV = templateVersion(DEFAULT_TEMPLATE);
+  if(toV <= fromV){ state.pendingTemplateUpdate = false; return; }
+  if(!hasProgress){
+    applyPendingTemplateMerge();
+  } else {
+    state.pendingTemplateUpdate = true;
+    var res = mergeTemplate(DEFAULT_TEMPLATE, state.template);
+    queueNotice(buildChangeSummary(res.changes, fromV, toV, true), toV);
+  }
+}
+
+/* ============================================================
    State
    ============================================================ */
 var state = {
@@ -167,13 +352,16 @@ var state = {
   sectionEls: {},
   phaseEls: {},
   searchQuery: "",
-  sectionObserver: null
+  sectionObserver: null,
+  activeNotice: null,
+  pendingTemplateUpdate: false
 };
 
 function init(){
   state.template = loadJSON(LS_TEMPLATE, null) || deepClone(DEFAULT_TEMPLATE);
   state.runs = loadJSON(LS_RUNS, []);
   var activeRun = loadJSON(LS_ACTIVE, null);
+  checkTemplateUpdate(runHasProgress(activeRun));
   if(!activeRun){ activeRun = createRun(state.template, state.runs); }
   state.run = activeRun;
   ensureRunChecks(state.template, state.run);
@@ -194,13 +382,14 @@ function init(){
    Derived helpers
    ============================================================ */
 function sectionCounts(section, run){
-  var total = section.items.length, done = 0;
-  section.items.forEach(function(it){ if(run.checks[it.id] && run.checks[it.id].ok) done++; });
+  var items = visibleItemsList(section);
+  var total = items.length, done = 0;
+  items.forEach(function(it){ if(run.checks[it.id] && run.checks[it.id].ok) done++; });
   return { done:done, total:total };
 }
 function phaseCounts(phaseId, tpl, run){
   var total=0, done=0;
-  tpl.sections.filter(function(s){ return s.phase===phaseId; }).forEach(function(s){
+  visibleSectionsList(tpl).filter(function(s){ return s.phase===phaseId; }).forEach(function(s){
     var c = sectionCounts(s, run);
     total += c.total; done += c.done;
   });
@@ -208,7 +397,7 @@ function phaseCounts(phaseId, tpl, run){
 }
 function phaseList(tpl){
   var order = [], seen = {};
-  tpl.sections.forEach(function(s){
+  visibleSectionsList(tpl).forEach(function(s){
     if(!seen[s.phase]){ seen[s.phase]=true; order.push(s.phase); }
   });
   return order;
@@ -216,12 +405,12 @@ function phaseList(tpl){
 var PHASE_LABEL = { "hazirlik":"HAZIRLIK", "saha":"SAHA", "ucus-sonrasi":"UÇUŞ SONRASI" };
 
 function autoCurrentPhase(tpl, run){
-  for(var i=0;i<tpl.sections.length;i++){
-    var s = tpl.sections[i];
-    var c = sectionCounts(s, run);
-    if(c.done < c.total) return s.phase;
+  var sections = visibleSectionsList(tpl);
+  for(var i=0;i<sections.length;i++){
+    var c = sectionCounts(sections[i], run);
+    if(c.done < c.total) return sections[i].phase;
   }
-  return tpl.sections.length ? tpl.sections[tpl.sections.length-1].phase : null;
+  return sections.length ? sections[sections.length-1].phase : null;
 }
 function isPhaseExpanded(phaseId){
   if(Object.prototype.hasOwnProperty.call(state.manualPhaseOverride, phaseId)){
@@ -232,15 +421,18 @@ function isPhaseExpanded(phaseId){
 
 
 
-function sahaItemCounts(tpl, run){
+function sahaItemCountsFromSections(sections, run){
   var total=0, done=0;
-  tpl.sections.filter(function(s){ return s.phase==="saha"; }).forEach(function(s){
-    s.items.forEach(function(it){
+  filterVisibleSections(sections).filter(function(s){ return s.phase==="saha"; }).forEach(function(s){
+    visibleItemsList(s).forEach(function(it){
       total++;
       if(run.checks[it.id] && run.checks[it.id].ok) done++;
     });
   });
   return {done:done, total:total};
+}
+function sahaItemCounts(tpl, run){
+  return sahaItemCountsFromSections(tpl.sections, run);
 }
 
 /* ============================================================
@@ -252,6 +444,8 @@ function renderAll(){
   renderArmBadge();
   renderNavRow();
   renderProgress();
+  renderNotice();
+  renderTemplateVersionBadge();
 }
 
 function renderFlightHeader(){
@@ -292,7 +486,7 @@ function renderLists(){
     body.className = "phase-body";
     if(!isPhaseExpanded(phaseId)) body.hidden = true;
 
-    state.template.sections.filter(function(s){ return s.phase===phaseId; }).forEach(function(section){
+    visibleSectionsList(state.template).filter(function(s){ return s.phase===phaseId; }).forEach(function(section){
       var secEl = document.createElement("section");
       secEl.className = "checklist-section";
       secEl.dataset.id = section.id;
@@ -312,7 +506,7 @@ function renderLists(){
 
       var ul = document.createElement("ul");
       ul.className = "item-list";
-      section.items.forEach(function(item, idx){
+      visibleItemsList(section).forEach(function(item, idx){
         var li = buildItemEl(section, item, idx);
         ul.appendChild(li);
         state.itemEls[item.id] = li;
@@ -495,8 +689,8 @@ function renderArmBadge(){
 
 function renderProgress(){
   var total = 0, done = 0;
-  state.template.sections.forEach(function(s){
-    s.items.forEach(function(it){
+  visibleSectionsList(state.template).forEach(function(s){
+    visibleItemsList(s).forEach(function(it){
       total++;
       if(state.run.checks[it.id] && state.run.checks[it.id].ok) done++;
     });
@@ -508,22 +702,21 @@ function renderProgress(){
 /* ============================================================
    Section nav (bottom bar prev/next)
    ============================================================ */
-function flatSectionOrder(){ return state.template.sections.map(function(s){ return s.id; }); }
+function flatSectionOrder(){ return visibleSectionsList(state.template).map(function(s){ return s.id; }); }
 function currentNavIndex(){
-  var order = flatSectionOrder();
-  for(var i=0;i<state.template.sections.length;i++){
-    var s = state.template.sections[i];
+  var sections = visibleSectionsList(state.template);
+  for(var i=0;i<sections.length;i++){
+    var s = sections[i];
     if(s.phase === "saha"){
       var sc = sectionCounts(s, state.run);
       if(sc.done < sc.total) return i;
     }
   }
-  for(var i=0;i<state.template.sections.length;i++){
-    var s = state.template.sections[i];
-    var sc = sectionCounts(s, state.run);
+  for(var i=0;i<sections.length;i++){
+    var sc = sectionCounts(sections[i], state.run);
     if(sc.done < sc.total) return i;
   }
-  return order.length-1;
+  return sections.length-1;
 }
 var navIndex = 0;
 function renderNavRow(){
@@ -686,6 +879,7 @@ function startNewFlight(){
   prev.endedAt = nowTs();
   state.runs.unshift(prev);
   persistRuns();
+  if(state.pendingTemplateUpdate) applyPendingTemplateMerge();
   state.run = createRun(state.template, state.runs);
   state.manualPhaseOverride = {};
   lastGateArmed = null;
@@ -791,7 +985,7 @@ function renderHistoryList(){
     return;
   }
   all.forEach(function(r){
-    var c = sahaItemCounts(state.template, r);
+    var c = sahaItemCountsFromSections(r.templateSnapshot || state.template.sections, r);
     var div = document.createElement("div");
     div.className = "history-item";
     var armed = c.total>0 && c.done===c.total;
@@ -829,18 +1023,20 @@ function openHistoryRun(runId){
     (r.flightNote ? '<br>'+escapeHtml(r.flightNote) : '');
   var root = document.getElementById("readonly-lists-root");
   root.innerHTML = "";
-  state.template.sections.forEach(function(section){
+  var snapshotSections = filterVisibleSections(r.templateSnapshot || state.template.sections);
+  snapshotSections.forEach(function(section){
     var secEl = document.createElement("section");
     secEl.className = "checklist-section";
-    var c = { done:0, total:section.items.length };
-    section.items.forEach(function(it){ if(r.checks[it.id] && r.checks[it.id].ok) c.done++; });
+    var items = visibleItemsList(section);
+    var c = { done:0, total:items.length };
+    items.forEach(function(it){ if(r.checks[it.id] && r.checks[it.id].ok) c.done++; });
     var titleRow = document.createElement("div");
     titleRow.className = "section-title-row";
     titleRow.innerHTML = '<span class="section-title">'+escapeHtml(section.title)+'</span><span class="section-count mono">'+c.done+'/'+c.total+'</span>';
     secEl.appendChild(titleRow);
     var ul = document.createElement("ul");
     ul.className = "item-list";
-    section.items.forEach(function(item, idx){
+    items.forEach(function(item, idx){
       var chk = r.checks[item.id] || {ok:false,note:""};
       var li = document.createElement("li");
       li.className = "item";
@@ -994,6 +1190,7 @@ function renderEdit(){
         '<button data-action="section-down" data-id="'+section.id+'" '+(sIdx===state.template.sections.length-1?"disabled":"")+'>▼</button>'+
       '</div>'+
       '<input type="text" value="'+escapeAttr(section.title)+'" data-action="section-title" data-id="'+section.id+'">'+
+      (section.hidden ? '<span class="edit-hidden-tag">kaldırıldı</span>' : '')+
       '<button class="edit-icon-btn" data-action="delete-section" data-id="'+section.id+'">✕</button>';
     div.appendChild(titleRow);
 
@@ -1017,6 +1214,7 @@ function renderEdit(){
         '</div>'+
         '<input type="text" value="'+escapeAttr(item.text)+'" data-action="item-text" data-sid="'+section.id+'" data-id="'+item.id+'">'+
         '<label class="edit-crit"><input type="checkbox" data-action="item-critical" data-sid="'+section.id+'" data-id="'+item.id+'" '+(item.critical?"checked":"")+'> krit.</label>'+
+        (item.hidden ? '<span class="edit-hidden-tag">kaldırıldı</span>' : '')+
         '<button class="edit-icon-btn" data-action="delete-item" data-sid="'+section.id+'" data-id="'+item.id+'">✕</button>';
       div.appendChild(row);
     });
@@ -1088,7 +1286,7 @@ function editAction(action, ds, inputEl){
   } else if(action === "add-item"){
     var sec5 = tpl.sections.find(function(x){ return x.id===ds.sid; });
     if(sec5){
-      sec5.items.push({ id: uid(sec5.id+"i"), text:"Yeni madde", critical:false });
+      sec5.items.push({ id: uid("u-"), text:"Yeni madde", critical:false });
     }
   }
   persistTemplate();
@@ -1097,10 +1295,25 @@ function editAction(action, ds, inputEl){
 }
 
 function addSection(){
-  var s = { id: uid("s"), title:"Yeni bölüm", phase:"saha", blocking:false, items:[] };
+  var s = { id: uid("u-s"), title:"Yeni bölüm", phase:"saha", blocking:false, items:[] };
   state.template.sections.push(s);
   persistTemplate();
   renderEdit();
+}
+
+function resetTemplateToDefault(){
+  var ok = window.confirm("Şablonu sıfırlamak yerel değişikliklerinizi silecek ve varsayılan şablonu geri yükleyecek. Bu işlem geri alınamaz. Devam edilsin mi?");
+  if(!ok) return;
+  state.template = deepClone(DEFAULT_TEMPLATE);
+  persistTemplate();
+  ensureRunChecks(state.template, state.run);
+  persistRun();
+  state.manualPhaseOverride = {};
+  navIndex = 0;
+  state.pendingTemplateUpdate = false;
+  renderTemplateVersionBadge();
+  renderEdit();
+  showToast("Şablon sıfırlandı");
 }
 
 /* ============================================================
@@ -1248,6 +1461,9 @@ function bindGlobalEvents(){
     }
   });
   document.getElementById("edit-add-section").addEventListener("click", addSection);
+  document.getElementById("reset-template-btn").addEventListener("click", resetTemplateToDefault);
+
+  document.getElementById("template-notice-dismiss").addEventListener("click", dismissNotice);
 
   window.addEventListener("beforeprint", function(){
     if(state.view !== "run" && state.view !== "run-readonly"){

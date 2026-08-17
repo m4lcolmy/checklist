@@ -1,4 +1,4 @@
-var CACHE_VERSION = "v2";
+var CACHE_VERSION = "v3";
 var CACHE_NAME = "ucus-oncesi-checklist-" + CACHE_VERSION;
 var ASSETS = [
   "./",
@@ -9,6 +9,7 @@ var ASSETS = [
   "./css/style.css",
   "./js/theme.js",
   "./js/xlsx.min.js",
+  "./js/default-template.js",
   "./js/app.js"
 ];
 

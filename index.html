@@ -29,6 +29,11 @@
   <main id="main">
     <div id="view-run">
       <div id="arm-print-status"></div>
+      <div id="template-notice" hidden>
+        <span id="template-notice-text"></span>
+        <button id="template-notice-dismiss" type="button" aria-label="Bildirimi kapat">✕</button>
+      </div>
+      <div id="tpl-meta-row"><span id="tpl-version-badge" class="mono"></span></div>
       <div id="flight-header">
         <div>
           <label for="f-date">Tarih</label>
@@ -71,6 +76,7 @@
       <p id="edit-hint">Kritik: madde işaretlenmemişken vurgu renginde gösterilir.</p>
       <div id="edit-root"></div>
       <button id="edit-add-section">+ Bölüm ekle</button>
+      <button id="reset-template-btn" type="button">Şablonu sıfırla</button>
     </div>
   </main>
 
@@ -109,6 +115,7 @@
 </div>
 
 <script src="./js/xlsx.min.js"></script>
+<script src="./js/default-template.js"></script>
 <script src="./js/app.js"></script>
 </body>
 </html>

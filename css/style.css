@@ -95,6 +95,19 @@ button, a, .item-tap, .phase-header, .section-title-row, #search-input{ touch-ac
 
 main{ flex:1; padding-bottom:calc(var(--bottombar-h) + env(safe-area-inset-bottom) + 16px); }
 
+/* ---------- template update notice ---------- */
+#template-notice{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+  padding:10px 16px; background:var(--pending-bg); border-bottom:1px solid var(--arm);
+  font-size:13px; line-height:1.35;
+}
+#template-notice[hidden]{ display:none; }
+#template-notice-text{ flex:1; }
+#template-notice-dismiss{ flex:none; font-weight:700; min-width:28px; min-height:28px; }
+
+/* ---------- template meta ---------- */
+#tpl-meta-row{ padding:6px 16px 0; font-size:12px; opacity:0.65; }
+
 /* ---------- flight header ---------- */
 #flight-header{ padding:0 16px 16px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 #flight-header .field-full{ grid-column:1 / -1; }
@@ -224,8 +237,13 @@ main{ flex:1; padding-bottom:calc(var(--bottombar-h) + env(safe-area-inset-botto
 .edit-item-row .edit-crit{ flex:none; }
 .edit-add-item{ margin-top:8px; min-height:44px; padding:0 12px; border:1px dashed var(--line); border-radius:2px; font-size:14px; font-weight:600; width:100%; text-align:left; }
 #edit-add-section{ margin:16px; min-height:48px; padding:0 12px; border:1px dashed var(--line); border-radius:2px; font-size:15px; font-weight:700; width:calc(100% - 32px); }
+.edit-hidden-tag{ flex:none; font-size:11px; font-weight:700; letter-spacing:0.03em; color:var(--arm); opacity:0.85; }
 .edit-updown{ display:flex; flex-direction:column; }
 .edit-updown button{ font-size:11px; min-height:18px; min-width:22px; }
+#reset-template-btn{
+  margin:16px 16px 0; min-height:44px; padding:0 12px; width:calc(100% - 32px);
+  border:1px solid var(--arm); color:var(--arm); border-radius:2px; font-size:14px; font-weight:700;
+}
 
 /* ---------- menu sheet ---------- */
 #menu-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:20; }
@@ -264,7 +282,7 @@ main{ flex:1; padding-bottom:calc(var(--bottombar-h) + env(safe-area-inset-botto
 
 /* ---------- print ---------- */
 @media print{
-  #topbar, #bottombar, #menu-overlay, #menu-sheet, #toast-wrap, .item-note-btn, #edit-banner, #progress-bar, #topbar-search{ display:none!important; }
+  #topbar, #bottombar, #menu-overlay, #menu-sheet, #toast-wrap, .item-note-btn, #edit-banner, #progress-bar, #topbar-search, #template-notice, #tpl-meta-row{ display:none!important; }
   #arm-print-status{ display:block!important; border:2px solid #000; padding:8px 16px; margin:8px 16px 12px; font-weight:700; font-size:14px; }
   body{ background:#fff; color:#000; font-size:11px; }
   .phase-header, .section-title-row{ position:static; background:#fff; color:#000; border-color:#000; }
