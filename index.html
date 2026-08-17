@@ -16,6 +16,10 @@
 
   <header id="topbar">
     <h1 id="app-title">Uçuş Öncesi Checklist</h1>
+    <div id="topbar-search" hidden>
+      <input id="search-input" type="search" placeholder="Ara..." inputmode="search" autocomplete="off">
+      <button id="search-clear" hidden aria-label="Aramayı temizle">✕</button>
+    </div>
     <button id="search-toggle-btn" aria-label="Madde ara">Ara</button>
     <div id="arm-badge" data-armed="false" aria-live="polite"><span id="arm-label">ARM</span> <span id="arm-count" class="mono"></span></div>
     <button id="menu-btn" aria-label="Menü" aria-haspopup="true"><span class="hamburger"><span></span><span></span><span></span></span></button>
@@ -43,13 +47,7 @@
           <textarea id="f-note" inputmode="text"></textarea>
         </div>
       </div>
-      <div id="search-wrap" hidden>
-        <label for="search-input">Parametre ara</label>
-        <div class="search-input-wrapper">
-          <input id="search-input" type="search" inputmode="search" autocomplete="off">
-          <button id="search-clear" hidden aria-label="Aramayı temizle">✕</button>
-        </div>
-      </div>
+
       <div id="lists-root"></div>
     </div>
 
