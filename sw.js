@@ -4,8 +4,12 @@ var ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./icon-192.png",
-  "./icon-512.png"
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./css/style.css",
+  "./js/theme.js",
+  "./js/xlsx.min.js",
+  "./js/app.js"
 ];
 
 self.addEventListener("install", function(event){
@@ -28,12 +32,12 @@ self.addEventListener("fetch", function(event){
   if(event.request.method !== "GET") return;
   event.respondWith(
     caches.match(event.request).then(function(cached){
-      if(cached) return cached;
-      return fetch(event.request).then(function(res){
+      var networkFetch = fetch(event.request).then(function(res){
         var copy = res.clone();
         caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
         return res;
-      }).catch(function(){ return cached; });
+      }).catch(function(){});
+      return cached || networkFetch;
     })
   );
 });
