@@ -265,6 +265,16 @@ main{ flex:1; padding-bottom:calc(var(--bottombar-h) + env(safe-area-inset-botto
 #menu-sheet .theme-picker button[data-active="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
 #file-import-run, #file-import-tpl{ display:none; }
 
+/* ---------- menu group (expandable export row) ---------- */
+.menu-group{ border-bottom:1px solid var(--panel); }
+.menu-group > button{ border-bottom:0; }
+.menu-chevron{ float:right; font-size:13px; opacity:0.7; transition:transform var(--tr); }
+.menu-group > button[aria-expanded="true"] .menu-chevron{ transform:rotate(90deg); }
+.menu-subrow{ display:flex; flex-direction:column; background:var(--panel); }
+.menu-subrow[hidden]{ display:none; }
+.menu-subrow button{ padding-left:52px; min-height:46px; font-size:14.5px; border-bottom:1px solid var(--paper); }
+.menu-subrow button:last-child{ border-bottom:0; }
+
 /* ---------- toast ---------- */
 #toast-wrap{ position:fixed; left:0; right:0; bottom:calc(var(--bottombar-h) + env(safe-area-inset-bottom) + 10px); z-index:30; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; }
 .toast{

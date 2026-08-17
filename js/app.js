@@ -1067,6 +1067,86 @@ function exportTemplate(){
   var blob = new Blob([JSON.stringify(state.template, null, 2)], {type:"application/json"});
   downloadBlob(blob, "checklist-sablon.json");
 }
+
+function buildPhasesForPdf(tpl, itemMapper, sectionCountText){
+  return phaseList(tpl).map(function(phaseId){
+    var sections = visibleSectionsList(tpl).filter(function(s){ return s.phase === phaseId; });
+    return {
+      label: PHASE_LABEL[phaseId] || phaseId,
+      sections: sections.map(function(section){
+        var items = visibleItemsList(section);
+        return {
+          title: section.title,
+          countText: sectionCountText(section, items),
+          items: items.map(function(item, idx){ return itemMapper(section, item, idx); })
+        };
+      })
+    };
+  }).filter(function(p){ return p.sections.length; });
+}
+
+function buildTemplatePdfSpec(){
+  var tpl = state.template;
+  var totalItems = 0, totalSections = 0;
+  var phases = buildPhasesForPdf(tpl,
+    function(section, item, idx){
+      totalItems++;
+      return { number:"#"+itemNumberLabel(section, idx), text:item.text, critical:!!item.critical, checked:null, note:null };
+    },
+    function(section, items){ totalSections++; return items.length+" madde"; }
+  );
+  return {
+    documentTitle: tpl.name || "Checklist şablonu",
+    filename: "checklist-sablon.pdf",
+    generatedAt: new Date(),
+    metaLines: [
+      { label:"Şablon", value: tpl.name || "—" },
+      { label:"Sürüm", value: "v"+templateVersion(tpl) },
+      { label:"Bölüm sayısı", value: String(totalSections) },
+      { label:"Madde sayısı", value: String(totalItems) }
+    ],
+    armStamp: null,
+    notice: "Bu belge işaretlenmemiş boş bir şablon çıktısıdır.",
+    phases: phases
+  };
+}
+
+function buildRunPdfSpec(){
+  var tpl = state.template, run = state.run;
+  var c = sahaItemCounts(tpl, run);
+  var armed = c.total > 0 && c.done === c.total;
+  var phases = buildPhasesForPdf(tpl,
+    function(section, item, idx){
+      var chk = run.checks[item.id] || {ok:false, note:""};
+      return { number:"#"+itemNumberLabel(section, idx), text:item.text, critical:!!item.critical, checked:!!chk.ok, note: chk.note || null };
+    },
+    function(section){ var sc = sectionCounts(section, run); return sc.done+"/"+sc.total; }
+  );
+  return {
+    documentTitle: (tpl.name || "Uçuş") + " — " + run.id,
+    filename: "ucus-" + run.id + ".pdf",
+    generatedAt: new Date(),
+    metaLines: [
+      { label:"Tarih", value: run.date },
+      { label:"Uçak / Deneme no", value: run.aircraft },
+      { label:"Rüzgar / Hava", value: run.wind },
+      { label:"Uçuş notu", value: run.flightNote }
+    ],
+    armStamp: armed ? "ARM DURUMU: HAZIR ✓" : "ARM DURUMU: TAMAMLANMADI ("+c.done+"/"+c.total+")",
+    notice: null,
+    phases: phases
+  };
+}
+
+function exportTemplatePdf(){
+  if(!window.PdfExport){ showToast("PDF motoru yüklenemedi"); return; }
+  window.PdfExport.generate(buildTemplatePdfSpec(), false);
+}
+function printRunPdf(){
+  if(!window.PdfExport){ showToast("PDF motoru yüklenemedi"); return; }
+  window.PdfExport.generate(buildRunPdfSpec(), true);
+}
+
 function downloadBlob(blob, filename){
   var a = document.createElement("a");
   var url = URL.createObjectURL(blob);
@@ -1400,6 +1480,11 @@ function bindGlobalEvents(){
 
   document.getElementById("menu-btn").addEventListener("click", function(){
     renderThemePicker();
+    var tplToggle = document.querySelector('[data-action="toggle-export-tpl"]');
+    if(tplToggle){
+      tplToggle.setAttribute("aria-expanded", "false");
+      document.querySelector('.menu-group[data-group="export-tpl"] .menu-subrow').hidden = true;
+    }
     document.getElementById("menu-overlay").hidden = false;
   });
   document.getElementById("menu-overlay").addEventListener("click", function(e){
@@ -1412,14 +1497,22 @@ function bindGlobalEvents(){
       renderThemePicker();
       return;
     }
+    if(action === "toggle-export-tpl"){
+      var sub = document.querySelector('.menu-group[data-group="export-tpl"] .menu-subrow');
+      var expanded = btn.getAttribute("aria-expanded") === "true";
+      btn.setAttribute("aria-expanded", expanded ? "false" : "true");
+      sub.hidden = expanded;
+      return;
+    }
     document.getElementById("menu-overlay").hidden = true;
     if(action === "history") switchView("history");
     else if(action === "edit") switchView("edit");
     else if(action === "export-run") exportRun();
-    else if(action === "export-tpl") exportTemplate();
+    else if(action === "export-tpl-pdf") exportTemplatePdf();
+    else if(action === "export-tpl-json") exportTemplate();
     else if(action === "import-tpl") document.getElementById("file-import-tpl").click();
     else if(action === "import-run") document.getElementById("file-import-run").click();
-    else if(action === "print") window.print();
+    else if(action === "print") printRunPdf();
     else if(action === "close"){ /* noop */ }
   });
 

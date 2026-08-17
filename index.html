@@ -96,7 +96,13 @@
       <button data-action="export-run"><span class="menu-icon">↑</span>Uçuşu dışa aktar (.json)</button>
       <button data-action="import-run"><span class="menu-icon">↓</span>Uçuşu içe aktar (.json)</button>
       <button data-action="print"><span class="menu-icon">▭</span>Yazdır / PDF</button>
-      <button data-action="export-tpl"><span class="menu-icon">↑</span>Şablonu dışa aktar (.json)</button>
+      <div class="menu-group" data-group="export-tpl">
+        <button data-action="toggle-export-tpl" aria-expanded="false"><span class="menu-icon">↑</span>Şablonu dışa aktar<span class="menu-chevron">▸</span></button>
+        <div class="menu-subrow" hidden>
+          <button data-action="export-tpl-pdf">PDF olarak indir</button>
+          <button data-action="export-tpl-json">JSON olarak indir (.json)</button>
+        </div>
+      </div>
       <button data-action="import-tpl"><span class="menu-icon">↓</span>Şablon içe aktar (.json / .xlsx)</button>
       <div class="menu-section-label">Tema</div>
       <div class="theme-picker" id="theme-picker">
@@ -115,6 +121,9 @@
 </div>
 
 <script src="./js/xlsx.min.js"></script>
+<script src="./js/jspdf.umd.min.js"></script>
+<script src="./js/pdf-fonts.js"></script>
+<script src="./js/pdf-export.js"></script>
 <script src="./js/default-template.js"></script>
 <script src="./js/app.js"></script>
 </body>
