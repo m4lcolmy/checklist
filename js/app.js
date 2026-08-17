@@ -1111,8 +1111,11 @@ function buildTemplatePdfSpec(){
   };
 }
 
-function buildRunPdfSpec(){
-  var tpl = state.template, run = state.run;
+function buildRunPdfSpec(run){
+  run = run || state.run;
+  var tpl = run.templateSnapshot
+    ? { name: state.template.name, version: state.template.version, sections: run.templateSnapshot }
+    : state.template;
   var c = sahaItemCounts(tpl, run);
   var armed = c.total > 0 && c.done === c.total;
   var phases = buildPhasesForPdf(tpl,
@@ -1144,7 +1147,8 @@ function exportTemplatePdf(){
 }
 function printRunPdf(){
   if(!window.PdfExport){ showToast("PDF motoru yüklenemedi"); return; }
-  window.PdfExport.generate(buildRunPdfSpec(), true);
+  var run = (state.view === "run-readonly" && state.historyRun) ? state.historyRun : state.run;
+  window.PdfExport.generate(buildRunPdfSpec(run), true);
 }
 
 function downloadBlob(blob, filename){
