@@ -358,7 +358,9 @@ var state = {
 };
 
 function init(){
-  state.template = loadJSON(LS_TEMPLATE, null) || deepClone(DEFAULT_TEMPLATE);
+  var storedTemplate = loadJSON(LS_TEMPLATE, null);
+  state.template = storedTemplate || deepClone(DEFAULT_TEMPLATE);
+  if(!storedTemplate) persistTemplate();
   state.runs = loadJSON(LS_RUNS, []);
   var activeRun = loadJSON(LS_ACTIVE, null);
   checkTemplateUpdate(runHasProgress(activeRun));
