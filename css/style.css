@@ -121,11 +121,13 @@ main{ flex:1; padding-bottom:calc(var(--bottombar-h) + env(safe-area-inset-botto
 /* ---------- template meta ---------- */
 #tpl-meta-row{ padding:6px 16px 0; font-size:12px; opacity:0.65; }
 
-/* ---------- flight header ---------- */
-#flight-header{ padding:0 16px 16px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-#flight-header .field-full{ grid-column:1 / -1; }
-#flight-header label{ display:block; font-size:13px; font-weight:600; margin-bottom:4px; }
-#flight-header input, #flight-header textarea{
+/* ---------- flight header (live run + history editing) ---------- */
+#flight-header, #history-flight-header{ padding:0 16px 16px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+#history-flight-header[hidden]{ display:none; }
+#flight-header .field-full, #history-flight-header .field-full{ grid-column:1 / -1; }
+#flight-header label, #history-flight-header label{ display:block; font-size:13px; font-weight:600; margin-bottom:4px; }
+#flight-header input, #flight-header textarea,
+#history-flight-header input, #history-flight-header textarea{
   width:100%; background:var(--panel); border:1px solid var(--line); color:var(--ink);
   padding:10px 12px; font-size:16px; border-radius:2px;
 }
@@ -267,6 +269,18 @@ main{ flex:1; padding-bottom:calc(var(--bottombar-h) + env(safe-area-inset-botto
 .history-empty{ padding:24px 0; text-align:center; }
 .back-btn{ min-height:48px; padding:0 12px 0 0; font-weight:700; margin-bottom:8px; }
 
+/* ---------- history detail (view + edit) ---------- */
+#history-detail-bar{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 16px; }
+#history-detail-bar .back-btn{ margin-bottom:0; }
+#history-edit-toggle{
+  flex:none; min-height:40px; padding:0 14px; font-size:14px; font-weight:700;
+  border:1px solid var(--line); border-radius:2px;
+}
+#history-edit-toggle[data-editing="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+#readonly-flight-header{ padding:8px 16px 16px; font-size:15px; }
+#readonly-flight-header[hidden]{ display:none; }
+.readonly-note{ margin-top:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+
 /* ---------- edit mode ---------- */
 #view-edit[hidden]{ display:none; }
 #edit-banner{
@@ -333,7 +347,8 @@ main{ flex:1; padding-bottom:calc(var(--bottombar-h) + env(safe-area-inset-botto
 
 /* ---------- misc ---------- */
 .hidden{ display:none!important; }
-.readonly .item-tap, .readonly .item-note-btn{ pointer-events:none; opacity:0.9; }
+.readonly .item-tap{ pointer-events:none; opacity:0.9; }
+.readonly .item-note-btn, .readonly .item-note-editor{ display:none; }
 .readonly #bottombar{ display:none; }
 .readonly main{ padding-bottom:16px; }
 .readonly .section-title-row{ top:0; }

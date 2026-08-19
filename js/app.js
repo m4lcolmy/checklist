@@ -606,6 +606,10 @@ var state = {
   runs: [],
   view: "run",
   historyRun: null,
+  historyEditing: false,
+  historyNoteEditor: null,
+  historyItemEls: {},
+  historySectionEls: {},
   manualPhaseOverride: {},
   itemEls: {},
   sectionEls: {},
@@ -1348,46 +1352,294 @@ function deleteHistoryRun(runId){
   });
 }
 
+/* ------------------------------------------------------------
+   History detail — the same run, viewed read-only or edited in
+   place. Saved runs stay editable so a flight can be corrected or
+   annotated after landing; every change writes straight back into
+   state.runs and is persisted.
+   ------------------------------------------------------------ */
 function openHistoryRun(runId){
-  var r = state.runs.find(function(x){ return x.id===runId; });
-  if(!r) return;
-  state.historyRun = r;
-  document.getElementById("readonly-flight-header").innerHTML =
-    '<strong>'+r.date+'</strong> · '+escapeHtml(r.aircraft||"—")+' · '+escapeHtml(r.wind||"—")+
-    (r.flightNote ? '<br>'+escapeHtml(r.flightNote) : '');
+  var run = state.runs.find(function(x){ return x.id===runId; });
+  if(!run) return;
+  state.historyRun = run;
+  state.historyEditing = false;
+  renderHistoryDetail();
+  switchView("run-readonly");
+}
+
+function historySnapshotSections(run){
+  return filterVisibleSections((run && run.templateSnapshot) || state.template.sections);
+}
+
+function setHistoryEditing(editing){
+  if(!state.historyRun) return;
+  state.historyEditing = !!editing;
+  renderHistoryDetail();
+  if(!state.historyEditing) showToast("Uçuş güncellendi: "+state.historyRun.date);
+}
+
+function renderHistoryDetail(){
+  var run = state.historyRun;
+  if(!run) return;
+  var editing = !!state.historyEditing;
+  document.getElementById("view-run-readonly").classList.toggle("readonly", !editing);
+  var toggle = document.getElementById("history-edit-toggle");
+  toggle.textContent = editing ? "Bitti" : "Düzenle";
+  toggle.dataset.editing = editing ? "true" : "false";
+  renderHistorySummary(run, editing);
+  renderHistoryFields(run, editing);
+  renderHistoryLists(run);
+}
+
+function renderHistorySummary(run, editing){
+  var el = document.getElementById("readonly-flight-header");
+  el.hidden = editing;
+  if(editing) return;
+  el.innerHTML =
+    '<strong>'+escapeHtml(run.date)+'</strong> · '+escapeHtml(run.aircraft||"—")+' · '+escapeHtml(run.wind||"—")+
+    (run.flightNote ? '<div class="readonly-note">'+escapeHtml(run.flightNote)+'</div>' : '');
+}
+
+function renderHistoryFields(run, editing){
+  var wrap = document.getElementById("history-flight-header");
+  wrap.hidden = !editing;
+  if(!editing) return;
+  document.getElementById("h-date").value = run.date || todayStr();
+  document.getElementById("h-aircraft").value = run.aircraft || "";
+  document.getElementById("h-wind").value = run.wind || "";
+  if(!state.historyNoteEditor && window.FlightNoteEditor){
+    state.historyNoteEditor = window.FlightNoteEditor.create({ root:document.getElementById("history-note-editor") });
+  }
+  if(state.historyNoteEditor){
+    state.historyNoteEditor.setValue(run.flightNoteHtml || "", run.flightNote || "");
+  } else {
+    document.getElementById("h-note").textContent = run.flightNote || "";
+  }
+}
+
+function renderHistoryLists(run){
   var root = document.getElementById("readonly-lists-root");
   root.innerHTML = "";
-  var snapshotSections = filterVisibleSections(r.templateSnapshot || state.template.sections);
-  snapshotSections.forEach(function(section){
+  state.historyItemEls = {};
+  state.historySectionEls = {};
+  historySnapshotSections(run).forEach(function(section){
     var secEl = document.createElement("section");
     secEl.className = "checklist-section";
-    var items = visibleItemsList(section);
-    var c = { done:0, total:items.length };
-    items.forEach(function(it){ if(r.checks[it.id] && r.checks[it.id].ok) c.done++; });
     var titleRow = document.createElement("div");
     titleRow.className = "section-title-row";
-    titleRow.innerHTML = '<span class="section-title">'+escapeHtml(section.title)+'</span><span class="section-count mono">'+c.done+'/'+c.total+'</span>';
+    titleRow.innerHTML =
+      '<span class="section-title">'+escapeHtml(section.title)+'</span>'+
+      '<span class="section-count mono"></span>';
     secEl.appendChild(titleRow);
+    state.historySectionEls[section.id] = { section:section, titleRow:titleRow };
+
     var ul = document.createElement("ul");
     ul.className = "item-list";
-    items.forEach(function(item, idx){
-      var chk = r.checks[item.id] || {ok:false,note:""};
-      var li = document.createElement("li");
-      li.className = "item";
-      li.dataset.ok = chk.ok ? "true":"false";
-      li.innerHTML =
-        '<span class="item-tap"><span class="item-check">'+(chk.ok?"✓":"")+'</span>'+
-        '<span class="item-body"><span class="item-num mono">#'+String(idx+1).padStart(2,"0")+(item.critical?"  KRİTİK":"")+'</span>'+
-        '<span class="item-text">'+escapeHtml(item.text)+'</span>'+
-        (chk.note ? '<span class="item-note-preview"><span class="item-note-label">Not:</span><span class="item-note-value">'+escapeHtml(chk.note)+'</span></span>' : '')+
-        '</span></span>';
+    visibleItemsList(section).forEach(function(item, idx){
+      var li = buildHistoryItemEl(section, item, idx, run);
+      state.historyItemEls[item.id] = li;
       ul.appendChild(li);
     });
     secEl.appendChild(ul);
     root.appendChild(secEl);
+    patchHistorySectionCount(section.id);
   });
-  document.getElementById("readonly-lists-root").parentElement.classList.add("readonly");
-  switchView("run-readonly");
+}
+
+function buildHistoryItemEl(section, item, idx, run){
+  var check = run.checks[item.id] || { ok:false, note:"", ts:null };
+  var li = document.createElement("li");
+  li.className = "item";
+  li.dataset.id = item.id;
+  li.dataset.sid = section.id;
+  li.dataset.ok = check.ok ? "true" : "false";
+  li.dataset.critical = item.critical ? "true" : "false";
+
+  var row = document.createElement("div");
+  row.className = "item-row";
+
+  var tap = document.createElement("button");
+  tap.className = "item-tap";
+  tap.dataset.action = "history-toggle-item";
+  tap.dataset.id = item.id;
+  tap.setAttribute("aria-pressed", check.ok ? "true" : "false");
+
+  var checkEl = document.createElement("span");
+  checkEl.className = "item-check";
+  checkEl.setAttribute("aria-hidden","true");
+  checkEl.textContent = check.ok ? "✓" : "";
+
+  var bodyEl = document.createElement("span");
+  bodyEl.className = "item-body";
+  var numEl = document.createElement("span");
+  numEl.className = "item-num mono";
+  numEl.textContent = "#"+itemNumberLabel(section, idx);
+  if(item.critical){
+    var critTag = document.createElement("span");
+    critTag.className = "item-crit-tag";
+    critTag.textContent = "  KRİTİK";
+    numEl.appendChild(critTag);
+  }
+  var textEl = document.createElement("span");
+  textEl.className = "item-text";
+  textEl.textContent = item.text;
+  bodyEl.appendChild(numEl);
+  bodyEl.appendChild(textEl);
+
+  var notePreview = document.createElement("span");
+  notePreview.className = "item-note-preview";
+  updateItemNotePreview(notePreview, check.note);
+  bodyEl.appendChild(notePreview);
+
+  tap.appendChild(checkEl);
+  tap.appendChild(bodyEl);
+
+  var noteBtn = document.createElement("button");
+  noteBtn.className = "item-note-btn";
+  noteBtn.dataset.action = "history-toggle-note";
+  noteBtn.dataset.id = item.id;
+  noteBtn.setAttribute("aria-label", check.note ? "Notu düzenle" : "Not ekle");
+  noteBtn.setAttribute("aria-expanded", "false");
+  noteBtn.dataset.hasNote = check.note ? "true" : "false";
+  noteBtn.dataset.editing = "false";
+  noteBtn.textContent = "Not";
+
+  row.appendChild(tap);
+  row.appendChild(noteBtn);
+  li.appendChild(row);
+
+  var noteEditor = document.createElement("div");
+  noteEditor.className = "item-note-editor";
+  noteEditor.hidden = true;
+  var ta = document.createElement("textarea");
+  ta.value = check.note || "";
+  ta.placeholder = "Not...";
+  ta.setAttribute("enterkeyhint", "done");
+  ta.dataset.action = "history-note-input";
+  ta.dataset.id = item.id;
+  noteEditor.appendChild(ta);
+  li.appendChild(noteEditor);
+
+  return li;
+}
+
+function patchHistorySectionCount(sectionId){
+  var rec = state.historySectionEls[sectionId];
+  if(!rec || !state.historyRun) return;
+  var sc = sectionCounts(rec.section, state.historyRun);
+  var isComplete = sc.total > 0 && sc.done === sc.total;
+  rec.titleRow.querySelector(".section-count").textContent = sc.done+"/"+sc.total+(isComplete ? " ✓" : "");
+  rec.titleRow.dataset.complete = isComplete ? "true" : "false";
+}
+
+function patchHistoryItem(itemId){
+  var run = state.historyRun;
+  var li = state.historyItemEls[itemId];
+  var check = run && run.checks[itemId];
+  if(!li || !check) return;
+  li.dataset.ok = check.ok ? "true" : "false";
+  li.querySelector(".item-tap").setAttribute("aria-pressed", check.ok ? "true" : "false");
+  li.querySelector(".item-check").textContent = check.ok ? "✓" : "";
+  updateItemNotePreview(li.querySelector(".item-note-preview"), check.note);
+  li.querySelector(".item-note-btn").dataset.hasNote = check.note ? "true" : "false";
+  patchHistorySectionCount(li.dataset.sid);
+}
+
+function toggleHistoryItem(itemId){
+  var run = state.historyRun;
+  var check = run && run.checks[itemId];
+  if(!check) return;
+  check.ok = !check.ok;
+  check.ts = nowTs();
+  if(check.ok) vibrate(30);
+  persistRuns();
+  patchHistoryItem(itemId);
+}
+
+function toggleHistoryNoteEditor(itemId){
+  var li = state.historyItemEls[itemId];
+  var check = state.historyRun && state.historyRun.checks[itemId];
+  if(!li || !check) return;
+  var editor = li.querySelector(".item-note-editor");
+  var noteBtn = li.querySelector(".item-note-btn");
+  if(!editor.hidden){ saveHistoryItemNote(itemId); return; }
+  var ta = editor.querySelector("textarea");
+  ta.value = check.note || "";
+  editor.hidden = false;
+  noteBtn.dataset.editing = "true";
+  noteBtn.textContent = "Kaydet";
+  noteBtn.setAttribute("aria-label", "Notu kaydet");
+  noteBtn.setAttribute("aria-expanded", "true");
+  ta.focus();
+}
+
+function saveHistoryItemNote(itemId){
+  var li = state.historyItemEls[itemId];
+  var check = state.historyRun && state.historyRun.checks[itemId];
+  if(!li || !check) return;
+  var editor = li.querySelector(".item-note-editor");
+  var noteBtn = li.querySelector(".item-note-btn");
+  var ta = editor.querySelector("textarea");
+  if(check.note !== ta.value){
+    check.note = ta.value;
+    check.ts = nowTs();
+    persistRuns();
+    patchHistoryItem(itemId);
+  }
+  editor.hidden = true;
+  noteBtn.dataset.editing = "false";
+  noteBtn.textContent = "Not";
+  noteBtn.setAttribute("aria-label", check.note ? "Notu düzenle" : "Not ekle");
+  noteBtn.setAttribute("aria-expanded", "false");
+  noteBtn.focus();
+}
+
+function bindHistoryDetailEvents(){
+  document.getElementById("history-edit-toggle").addEventListener("click", function(){
+    setHistoryEditing(!state.historyEditing);
+  });
+
+  var root = document.getElementById("readonly-lists-root");
+  root.addEventListener("click", function(e){
+    if(!state.historyEditing) return;
+    var noteBtn = e.target.closest('[data-action="history-toggle-note"]');
+    if(noteBtn){ toggleHistoryNoteEditor(noteBtn.dataset.id); return; }
+    var tap = e.target.closest('[data-action="history-toggle-item"]');
+    if(tap){ toggleHistoryItem(tap.dataset.id); return; }
+  });
+  root.addEventListener("keydown", function(e){
+    if(!e.target || !e.target.matches('[data-action="history-note-input"]')) return;
+    if(e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+    e.preventDefault();
+    saveHistoryItemNote(e.target.dataset.id);
+  });
+
+  document.getElementById("h-date").addEventListener("change", function(){
+    if(!state.historyRun) return;
+    state.historyRun.date = this.value || state.historyRun.date;
+    persistRuns();
+  });
+  document.getElementById("h-aircraft").addEventListener("input", function(){
+    if(!state.historyRun) return;
+    state.historyRun.aircraft = this.value;
+    persistRuns();
+  });
+  document.getElementById("h-wind").addEventListener("input", function(){
+    if(!state.historyRun) return;
+    state.historyRun.wind = this.value;
+    persistRuns();
+  });
+  document.getElementById("h-note").addEventListener("richchange", function(event){
+    if(!state.historyRun) return;
+    state.historyRun.flightNote = event.detail.text;
+    state.historyRun.flightNoteHtml = event.detail.text ? event.detail.html : "";
+    persistRuns();
+  });
+  document.getElementById("h-note").addEventListener("input", function(){
+    if(state.historyNoteEditor || !state.historyRun) return;
+    state.historyRun.flightNote = this.textContent || "";
+    persistRuns();
+  });
 }
 
 /* ============================================================
@@ -1469,6 +1721,7 @@ function buildRunPdfSpec(run){
       { label:"Rüzgar / Hava", value: run.wind }
     ],
     flightNote: run.flightNote || null,
+    flightNoteHtml: run.flightNoteHtml || null,
     armStamp: armed ? "ARM DURUMU: HAZIR ✓" : "ARM DURUMU: TAMAMLANMADI ("+c.done+"/"+c.total+")",
     notice: null,
     phases: phases
@@ -1818,6 +2071,10 @@ function switchView(view){
   document.getElementById("view-edit").hidden = view !== "edit";
   document.getElementById("bottombar").hidden = view !== "run";
   window.scrollTo(0,0);
+  if(view !== "run-readonly"){
+    state.historyEditing = false;
+    state.historyRun = null;
+  }
   if(view === "history") renderHistoryList();
   if(view === "edit") renderEdit();
   if(view === "run"){ renderAll(); }
@@ -1944,6 +2201,8 @@ function bindGlobalEvents(){
   document.querySelectorAll('[data-back]').forEach(function(btn){
     btn.addEventListener("click", function(){ switchView("run"); });
   });
+
+  bindHistoryDetailEvents();
 
   document.getElementById("history-list").addEventListener("click", function(e){
     var openBtn = e.target.closest('[data-action="open-history"]');

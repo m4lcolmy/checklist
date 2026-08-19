@@ -79,8 +79,38 @@
     </div>
 
     <div id="view-run-readonly" hidden>
-      <button class="back-btn" data-back>‹ Geri</button>
-      <div id="readonly-flight-header" style="padding:0 16px 16px;font-size:15px;"></div>
+      <div id="history-detail-bar">
+        <button class="back-btn" data-back>‹ Geri</button>
+        <button id="history-edit-toggle" type="button" data-editing="false">Düzenle</button>
+      </div>
+      <div id="readonly-flight-header"></div>
+      <div id="history-flight-header" hidden>
+        <div>
+          <label for="h-date">Tarih</label>
+          <input id="h-date" type="date" inputmode="none">
+        </div>
+        <div>
+          <label for="h-aircraft">Uçak / Deneme no</label>
+          <input id="h-aircraft" type="text" inputmode="text">
+        </div>
+        <div class="field-full">
+          <label for="h-wind">Rüzgar / Hava</label>
+          <input id="h-wind" type="text" inputmode="text">
+        </div>
+        <div class="field-full">
+          <label id="h-note-label" for="h-note">Uçuş notu</label>
+          <div id="history-note-editor" class="rich-note-editor">
+            <div class="rich-note-toolbar" data-rich-note-toolbar role="toolbar" aria-label="Uçuş notu biçimlendirme">
+              <button type="button" data-rich-command="bold" aria-label="Kalın" aria-pressed="false" title="Kalın (Ctrl+B)"><strong>K</strong></button>
+              <button type="button" data-rich-command="italic" aria-label="İtalik" aria-pressed="false" title="İtalik (Ctrl+I)"><em>İ</em></button>
+              <button type="button" data-rich-command="insertOrderedList" aria-label="Numaralı liste" aria-pressed="false" title="Numaralı liste">1.</button>
+              <button type="button" data-rich-command="insertUnorderedList" aria-label="Madde işaretli liste" aria-pressed="false" title="Madde işaretli liste">•</button>
+              <button type="button" data-rich-command="removeFormat" aria-label="Biçimlendirmeyi temizle" aria-pressed="false" title="Biçimlendirmeyi temizle">Tx</button>
+            </div>
+            <div id="h-note" class="rich-note-input" data-rich-note-input contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="h-note-label" data-placeholder="Uçuşla ilgili notlar…" spellcheck="true"><p><br></p></div>
+          </div>
+        </div>
+      </div>
       <div id="readonly-lists-root"></div>
     </div>
 

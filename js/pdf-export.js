@@ -234,64 +234,263 @@ Flow.prototype.drawNoticeLine = function(text){
   this.y += 6.5;
 };
 
-/* ---------- notes / signature pages ---------- */
-var NOTES_LINE_H = 4.2;
-var NOTES_SIG_ZONE_H = 26;
+/* ============================================================
+   Flight note pages
+   The typed note is rendered as real typography — the editor's
+   bold / italic / numbered / bulleted structure survives into the
+   PDF — laid out on a fixed baseline grid inside the text column.
+   Whatever is left of the page is ruled for handwriting, and the
+   final note page carries the signature block.
+   ============================================================ */
+var NOTE_SIZE = 10;            // pt, body text of the typed note
+var NOTE_LINE_H = 5.3;         // mm, baseline-to-baseline inside a block
+var NOTE_BASELINE = 3.7;       // mm, top of line box -> baseline
+var NOTE_PARA_GAP = 2.6;       // mm, extra space between blocks
+var NOTE_LIST_INDENT = 8;      // mm, body indent of list items (hanging marker)
+var NOTE_MARKER_GAP = 2.4;     // mm, gap between marker and list body
+var NOTE_RULE_STEP = 8.4;      // mm, handwriting rule pitch
+var NOTE_SIG_ZONE_H = 26;      // mm reserved for the signature block
+var NOTE_TEXT_TOP = CONTENT_TOP + 15;
+var NOTE_ITALIC_SHEAR = 0.22;  // fake-oblique slant (Roboto ships regular+bold only)
 
-function splitNoteLines(doc, note){
-  var normalized = String(note || "")
+/* ---- block model: { marker, indent, runs:[{text,bold,italic}] } ---- */
+function noteRunsFromNode(node, bold, italic){
+  var runs = [];
+  Array.prototype.forEach.call(node.childNodes, function(child){
+    if(child.nodeType === 3){
+      var text = String(child.nodeValue || "").replace(/\u00a0/g, " ");
+      if(text) runs.push({ text:text, bold:bold, italic:italic });
+      return;
+    }
+    if(child.nodeType !== 1) return;
+    var tag = child.tagName.toUpperCase();
+    if(tag === "BR"){ runs.push({ text:"\n", bold:bold, italic:italic }); return; }
+    noteRunsFromNode(child, bold || tag === "STRONG" || tag === "B", italic || tag === "EM" || tag === "I")
+      .forEach(function(run){ runs.push(run); });
+  });
+  return runs;
+}
+
+function noteBlocksFromContainer(container){
+  var blocks = [];
+  Array.prototype.forEach.call(container.childNodes, function(node){
+    if(node.nodeType === 3){
+      var text = String(node.nodeValue || "").replace(/\u00a0/g, " ");
+      if(text.trim()) blocks.push({ marker:null, indent:0, runs:[{ text:text, bold:false, italic:false }] });
+      return;
+    }
+    if(node.nodeType !== 1) return;
+    var tag = node.tagName.toUpperCase();
+    if(tag === "OL" || tag === "UL"){
+      var counter = 1;
+      Array.prototype.forEach.call(node.children, function(li){
+        if(li.tagName.toUpperCase() !== "LI") return;
+        blocks.push({
+          marker: tag === "OL" ? (counter++) + "." : "•",
+          indent: NOTE_LIST_INDENT,
+          runs: noteRunsFromNode(li, false, false)
+        });
+      });
+      return;
+    }
+    if(tag === "BR"){ blocks.push({ marker:null, indent:0, runs:[] }); return; }
+    blocks.push({ marker:null, indent:0, runs: noteRunsFromNode(node, false, false) });
+  });
+  return blocks;
+}
+
+function noteBlocksFromHtml(html){
+  if(!html || typeof document === "undefined") return null;
+  try{
+    var host = document.createElement("template");
+    host.innerHTML = String(html);
+    var blocks = noteBlocksFromContainer(host.content);
+    return blocks.length ? blocks : null;
+  }catch(e){ return null; }
+}
+
+function noteBlocksFromText(text){
+  var normalized = String(text || "")
     .replace(/\r\n?/g, "\n")
     .replace(/\t/g, "    ")
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
-  if(!normalized.trim()) return [];
-
-  // jsPDF wraps with the currently selected font, so measure with the exact
-  // face and size used when the note body is drawn.
-  setFont(doc, "normal", 9.2, INK);
-  var lines = [];
-  normalized.split("\n").forEach(function(paragraph){
-    if(paragraph === ""){
-      lines.push("");
+  var blocks = [];
+  normalized.split("\n").forEach(function(line){
+    var listMatch = line.match(/^\s*(\d+[.)]|[•·*-])\s+(.*)$/);
+    if(listMatch){
+      blocks.push({
+        marker: /^\d/.test(listMatch[1]) ? listMatch[1] : "•",
+        indent: NOTE_LIST_INDENT,
+        runs: listMatch[2] ? [{ text:listMatch[2], bold:false, italic:false }] : []
+      });
       return;
     }
-    var wrapped = doc.splitTextToSize(paragraph, CONTENT_W);
-    if(!Array.isArray(wrapped)) wrapped = [String(wrapped || "")];
-    wrapped.forEach(function(line){ lines.push(line); });
+    blocks.push({ marker:null, indent:0, runs: line.trim() ? [{ text:line, bold:false, italic:false }] : [] });
   });
+  return blocks;
+}
+
+function noteBlockIsEmpty(block){
+  if(block.marker) return false;
+  for(var i=0;i<block.runs.length;i++){
+    if(String(block.runs[i].text).replace(/\s/g, "") !== "") return false;
+  }
+  return true;
+}
+function trimNoteBlocks(blocks){
+  var start = 0, end = blocks.length;
+  while(start < end && noteBlockIsEmpty(blocks[start])) start++;
+  while(end > start && noteBlockIsEmpty(blocks[end-1])) end--;
+  return blocks.slice(start, end);
+}
+
+/* ---- measuring, wrapping ---- */
+function noteTextWidth(doc, text, bold){
+  setFont(doc, bold ? "bold" : "normal", NOTE_SIZE, INK);
+  return doc.getTextWidth(text);
+}
+
+function noteTokens(runs){
+  var tokens = [];
+  runs.forEach(function(run){
+    String(run.text).split(/(\n)/).forEach(function(part){
+      if(part === "") return;
+      if(part === "\n"){ tokens.push({ br:true }); return; }
+      part.split(/(\s+)/).forEach(function(piece){
+        if(piece === "") return;
+        var isSpace = /^\s+$/.test(piece);
+        tokens.push({ text: isSpace ? " " : piece, space:isSpace, bold:!!run.bold, italic:!!run.italic });
+      });
+    });
+  });
+  return tokens;
+}
+
+// jsPDF's splitTextToSize can't carry per-word styling, so the note column is
+// wrapped here: every token is measured with its own face, then broken on width.
+function wrapNoteTokens(doc, tokens, width){
+  var lines = [], line = [], lineW = 0;
+  function flush(){
+    while(line.length && line[line.length-1].space) line.pop();
+    lines.push(line);
+    line = []; lineW = 0;
+  }
+  function push(text, tok, w){
+    line.push({ text:text, bold:tok.bold, italic:tok.italic, space:!!tok.space });
+    lineW += w;
+  }
+  tokens.forEach(function(tok){
+    if(tok.br){ flush(); return; }
+    var w = noteTextWidth(doc, tok.text, tok.bold);
+    if(tok.space){
+      if(lineW > 0) push(tok.text, tok, w);
+      return;
+    }
+    if(lineW > 0 && lineW + w > width) flush();
+    if(w <= width){ push(tok.text, tok, w); return; }
+    // token wider than the whole column (a URL, a long identifier): split it
+    var chunk = "";
+    tok.text.split("").forEach(function(ch){
+      var candidate = chunk + ch;
+      if(chunk && lineW + noteTextWidth(doc, candidate, tok.bold) > width){
+        push(chunk, tok, noteTextWidth(doc, chunk, tok.bold));
+        flush();
+        chunk = ch;
+      } else {
+        chunk = candidate;
+      }
+    });
+    if(chunk) push(chunk, tok, noteTextWidth(doc, chunk, tok.bold));
+  });
+  flush();
   return lines;
 }
 
-function notesPageChunks(lines, fullCapacity, finalCapacity){
-  if(!lines.length) return [[]];
-  if(lines.length <= finalCapacity) return [lines];
-
-  var pageCount = 1 + Math.ceil((lines.length - finalCapacity) / fullCapacity);
-  var finalSize = Math.min(finalCapacity, Math.ceil(lines.length / pageCount));
-  var leadingCount = pageCount - 1;
-  var leadingRemaining = lines.length - finalSize;
-  var chunks = [], offset = 0;
-  for(var i=0; i<leadingCount; i++){
-    var size = Math.ceil(leadingRemaining / (leadingCount - i));
-    chunks.push(lines.slice(offset, offset + size));
-    offset += size;
-    leadingRemaining -= size;
-  }
-  chunks.push(lines.slice(offset));
-  return chunks;
+function layoutNoteLines(doc, blocks){
+  var out = [];
+  blocks.forEach(function(block, blockIndex){
+    var wrapped = wrapNoteTokens(doc, noteTokens(block.runs), CONTENT_W - block.indent);
+    if(!wrapped.length) wrapped = [[]];
+    wrapped.forEach(function(segments, lineIndex){
+      out.push({
+        segments: segments,
+        indent: block.indent,
+        marker: lineIndex === 0 ? block.marker : null,
+        gapBefore: (blockIndex > 0 && lineIndex === 0) ? NOTE_PARA_GAP : 0
+      });
+    });
+  });
+  return out;
 }
 
-function drawNotesHeading(doc){
+/* ---- drawing ---- */
+// Roboto ships regular + bold only, so italics are synthesized: the run is
+// drawn inside a q/Q pair carrying a shear anchored on its own baseline, which
+// leaves position, size and the Turkish glyph coverage of the font untouched.
+var italicShearOk = null;
+function canShearItalic(doc){
+  if(italicShearOk === null){
+    italicShearOk = !!(doc.internal &&
+      typeof doc.internal.write === "function" &&
+      typeof doc.internal.scaleFactor === "number" &&
+      doc.internal.pageSize && typeof doc.internal.pageSize.getHeight === "function");
+  }
+  return italicShearOk;
+}
+function drawNoteText(doc, text, x, baseline, bold, italic){
+  setFont(doc, bold ? "bold" : "normal", NOTE_SIZE, INK);
+  if(!italic || !canShearItalic(doc)){
+    doc.text(text, x, baseline);
+    return;
+  }
+  var baselineInUserSpace = (doc.internal.pageSize.getHeight() - baseline) * doc.internal.scaleFactor;
+  doc.internal.write("q 1 0 " + NOTE_ITALIC_SHEAR + " 1 " +
+    (-NOTE_ITALIC_SHEAR * baselineInUserSpace).toFixed(3) + " 0 cm");
+  doc.text(text, x, baseline);
+  doc.internal.write("Q");
+}
+
+function drawNoteLine(doc, line, yTop){
+  var baseline = yTop + NOTE_BASELINE;
+  var x = MARGIN_L + line.indent;
+  if(line.marker){
+    setFont(doc, "normal", NOTE_SIZE, MUTED);
+    doc.text(line.marker, x - NOTE_MARKER_GAP, baseline, { align:"right" });
+  }
+  line.segments.forEach(function(seg){
+    drawNoteText(doc, seg.text, x, baseline, seg.bold, seg.italic);
+    x += noteTextWidth(doc, seg.text, seg.bold);
+  });
+}
+
+function drawNotesHeading(doc, title){
   var y = CONTENT_TOP;
-  setFont(doc, "bold", 13, INK);
-  doc.text("Notlar", MARGIN_L, y + 3);
+  setFont(doc, "bold", 12.5, INK);
+  doc.text(title, MARGIN_L, y + 3.4);
   doc.setDrawColor.apply(doc, RULE);
   doc.setLineWidth(0.4);
-  doc.line(MARGIN_L, y + 6, MARGIN_L + CONTENT_W, y + 6);
-  return y + 14;
+  doc.line(MARGIN_L, y + 6.4, MARGIN_L + CONTENT_W, y + 6.4);
+  return NOTE_TEXT_TOP;
+}
+
+function drawWritingRules(doc, yTop, yBottom, label){
+  var y = yTop;
+  if(label){
+    setFont(doc, "bold", 7.4, MUTED);
+    doc.text(label, MARGIN_L, y);
+    y += 2.6;
+  }
+  doc.setDrawColor.apply(doc, HAIRLINE);
+  doc.setLineWidth(0.25);
+  y += NOTE_RULE_STEP;
+  while(y <= yBottom){
+    doc.line(MARGIN_L, y, MARGIN_L + CONTENT_W, y);
+    y += NOTE_RULE_STEP;
+  }
 }
 
 function drawSignatureArea(doc){
-  var sigY = CONTENT_BOTTOM - NOTES_SIG_ZONE_H + 6;
+  var sigY = CONTENT_BOTTOM - NOTE_SIG_ZONE_H + 6;
   var boxW = (CONTENT_W - 8) / 2;
   [["İMZA", MARGIN_L], ["TARİH", MARGIN_L + boxW + 8]].forEach(function(pair){
     setFont(doc, "normal", 7.6, MUTED);
@@ -302,52 +501,60 @@ function drawSignatureArea(doc){
   });
 }
 
-function drawNotesPages(doc, note){
-  var lines = splitNoteLines(doc, note);
-  var textY = CONTENT_TOP + 19;
-  var fullLineBottom = CONTENT_BOTTOM - 2;
-  var finalLineBottom = CONTENT_BOTTOM - NOTES_SIG_ZONE_H - 4;
-  var fullCapacity = Math.max(1, Math.floor((fullLineBottom - textY) / NOTES_LINE_H) + 1);
-  var finalCapacity = Math.max(1, Math.floor((finalLineBottom - textY) / NOTES_LINE_H) + 1);
-  var chunks = notesPageChunks(lines, fullCapacity, finalCapacity);
-
-  chunks.forEach(function(chunk, pageIndex){
-    var isFinal = pageIndex === chunks.length - 1;
-    doc.addPage();
-    var y = drawNotesHeading(doc);
-    if(lines.length){
-      setFont(doc, "bold", 7.6, MUTED);
-      doc.text("UÇUŞ NOTU", MARGIN_L, y);
-      y += 5;
-      setFont(doc, "normal", 9.2, INK);
-      chunk.forEach(function(line){
-        if(line) doc.text(line, MARGIN_L, y);
-        y += NOTES_LINE_H;
-      });
-      y += 1.5;
+function paginateNoteLines(lines){
+  var pages = [], current = [], y = NOTE_TEXT_TOP;
+  lines.forEach(function(line){
+    var h = line.gapBefore + NOTE_LINE_H;
+    if(current.length && y + h > CONTENT_BOTTOM){
+      pages.push(current);
+      current = [];
+      y = NOTE_TEXT_TOP;
+      line.gapBefore = 0;
+      h = NOTE_LINE_H;
     }
-
-    var ruledBottom = isFinal ? CONTENT_BOTTOM - NOTES_SIG_ZONE_H : CONTENT_BOTTOM;
-    doc.setDrawColor.apply(doc, HAIRLINE);
-    doc.setLineWidth(0.25);
-    while(y < ruledBottom){
-      doc.line(MARGIN_L, y, MARGIN_L + CONTENT_W, y);
-      y += 8.4;
-    }
-    if(isFinal) drawSignatureArea(doc);
+    current.push(line);
+    y += h;
   });
+  pages.push(current);
+  return pages;
 }
 
 function drawBlankNotesPage(doc){
   doc.addPage();
-  var y = drawNotesHeading(doc);
-  doc.setDrawColor.apply(doc, HAIRLINE);
-  doc.setLineWidth(0.25);
-  while(y < CONTENT_BOTTOM - NOTES_SIG_ZONE_H){
-    doc.line(MARGIN_L, y, MARGIN_L + CONTENT_W, y);
-    y += 8.4;
-  }
+  var y = drawNotesHeading(doc, "Notlar");
+  drawWritingRules(doc, y, CONTENT_BOTTOM - NOTE_SIG_ZONE_H, null);
   drawSignatureArea(doc);
+}
+
+function drawFlightNotePages(doc, note, noteHtml){
+  var blocks = noteBlocksFromHtml(noteHtml);
+  if(!blocks) blocks = noteBlocksFromText(note);
+  blocks = trimNoteBlocks(blocks);
+  var lines = blocks.length ? layoutNoteLines(doc, blocks) : [];
+  if(!lines.length){ drawBlankNotesPage(doc); return; }
+
+  var pages = paginateNoteLines(lines);
+  var y = NOTE_TEXT_TOP;
+  pages.forEach(function(pageLines){
+    doc.addPage();
+    y = drawNotesHeading(doc, "Uçuş Notu");
+    pageLines.forEach(function(line){
+      y += line.gapBefore;
+      drawNoteLine(doc, line, y);
+      y += NOTE_LINE_H;
+    });
+  });
+
+  // Whatever is left under the note becomes ruled writing room. If the note
+  // ran to the bottom, the ruled area and signature get a page of their own.
+  var rulesTop = y + 7;
+  var rulesBottom = CONTENT_BOTTOM - NOTE_SIG_ZONE_H;
+  if(rulesTop + NOTE_RULE_STEP * 2 <= rulesBottom){
+    drawWritingRules(doc, rulesTop, rulesBottom, "EK NOTLAR");
+    drawSignatureArea(doc);
+  } else {
+    drawBlankNotesPage(doc);
+  }
 }
 
 /* ---------- running header / footer, stamped after content is final ---------- */
@@ -377,7 +584,7 @@ function stampChrome(doc, docTitle, generatedAt){
    spec = {
      documentTitle, filename, generatedAt(Date),
      metaLines: [{label,value}], armStamp: string|null, notice: string|null,
-     flightNote: string|null,
+     flightNote: string|null, flightNoteHtml: string|null,
      phases: [{ label, sections:[{ title, countText, items:[
        { number, text, critical, checked(bool|null), note(string|null) }
      ]}]}]
@@ -401,7 +608,7 @@ function generate(spec, openInNewTab){
   });
 
   if(String(spec.flightNote || "").trim()){
-    drawNotesPages(doc, spec.flightNote);
+    drawFlightNotePages(doc, spec.flightNote, spec.flightNoteHtml);
   } else if(doc.internal.getNumberOfPages() % 2 !== 0){
     drawBlankNotesPage(doc);
   }
