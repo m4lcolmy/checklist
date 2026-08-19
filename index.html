@@ -29,10 +29,17 @@
   <main id="main">
     <div id="view-run">
       <div id="arm-print-status"></div>
-      <div id="template-notice" hidden>
-        <span id="template-notice-text"></span>
-        <button id="template-notice-dismiss" type="button" aria-label="Bildirimi kapat">✕</button>
-      </div>
+      <section id="template-notice" role="region" aria-labelledby="template-notice-title" aria-live="polite" aria-atomic="true" hidden>
+        <div id="template-notice-content">
+          <strong id="template-notice-title" tabindex="-1"></strong>
+          <p id="template-notice-text"></p>
+          <div id="template-notice-actions">
+            <button id="template-update-accept" type="button" hidden>Güncellemeyi uygula</button>
+            <button id="template-update-decline" type="button" hidden>Bu güncellemeyi atla</button>
+          </div>
+        </div>
+        <button id="template-notice-dismiss" type="button" aria-label="Güncelleme bildirimini kapat" hidden>✕</button>
+      </section>
       <div id="tpl-meta-row"><span id="tpl-version-badge" class="mono"></span></div>
       <div id="flight-header">
         <div>
@@ -48,8 +55,17 @@
           <input id="f-wind" type="text" inputmode="text">
         </div>
         <div class="field-full">
-          <label for="f-note">Uçuş notu</label>
-          <textarea id="f-note" inputmode="text"></textarea>
+          <label id="f-note-label" for="f-note">Uçuş notu</label>
+          <div id="flight-note-editor" class="rich-note-editor">
+            <div class="rich-note-toolbar" data-rich-note-toolbar role="toolbar" aria-label="Uçuş notu biçimlendirme">
+              <button type="button" data-rich-command="bold" aria-label="Kalın" aria-pressed="false" title="Kalın (Ctrl+B)"><strong>K</strong></button>
+              <button type="button" data-rich-command="italic" aria-label="İtalik" aria-pressed="false" title="İtalik (Ctrl+I)"><em>İ</em></button>
+              <button type="button" data-rich-command="insertOrderedList" aria-label="Numaralı liste" aria-pressed="false" title="Numaralı liste">1.</button>
+              <button type="button" data-rich-command="insertUnorderedList" aria-label="Madde işaretli liste" aria-pressed="false" title="Madde işaretli liste">•</button>
+              <button type="button" data-rich-command="removeFormat" aria-label="Biçimlendirmeyi temizle" aria-pressed="false" title="Biçimlendirmeyi temizle">Tx</button>
+            </div>
+            <div id="f-note" class="rich-note-input" data-rich-note-input contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="f-note-label" data-placeholder="Uçuşla ilgili notlar…" spellcheck="true"><p><br></p></div>
+          </div>
         </div>
       </div>
 
@@ -71,12 +87,14 @@
     <div id="view-edit" hidden>
       <div id="edit-banner">
         <span>DÜZENLEME MODU</span>
-        <button data-back>Bitti</button>
+        <div id="edit-banner-actions">
+          <button id="reset-template-btn" type="button" hidden>Şablonu sıfırla</button>
+          <button data-back>Bitti</button>
+        </div>
       </div>
       <p id="edit-hint">Kritik: madde işaretlenmemişken vurgu renginde gösterilir.</p>
       <div id="edit-root"></div>
       <button id="edit-add-section">+ Bölüm ekle</button>
-      <button id="reset-template-btn" type="button">Şablonu sıfırla</button>
     </div>
   </main>
 
@@ -117,7 +135,7 @@
   <input type="file" id="file-import-tpl" accept=".json,.xlsx">
   <input type="file" id="file-import-run" accept=".json">
 
-  <div id="toast-wrap"></div>
+  <div id="toast-wrap" role="status" aria-live="polite" aria-atomic="true"></div>
 </div>
 
 <script src="./js/xlsx.min.js"></script>
@@ -125,6 +143,7 @@
 <script src="./js/pdf-fonts.js"></script>
 <script src="./js/pdf-export.js"></script>
 <script src="./js/default-template.js"></script>
+<script src="./js/rich-text-editor.js"></script>
 <script src="./js/app.js"></script>
 </body>
 </html>

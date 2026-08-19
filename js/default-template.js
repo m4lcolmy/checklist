@@ -1,63 +1,40 @@
 /* ============================================================
-   Default checklist template — EDIT THIS FILE to change defaults.
+   Default checklist template — the mandatory baseline used by new
+   installations and by "Şablonu sıfırla".
 
-   HOW THE VERSIONING/MERGE SYSTEM WORKS (see js/app.js "Template
-   versioning / merge" section for the code):
+   EXISTING USERS ARE UPDATED THROUGH TEMPLATE_UPDATES BELOW:
 
-   - Every user's browser keeps its OWN copy of this template in
-     localStorage (so their custom edits/reorders survive updates).
-   - `version` below is compared against each user's stored copy.
-     When you ship a HIGHER version than what they have saved, the
-     app merges your changes into their copy automatically:
-       - New section/item ids that don't exist locally are ADDED
-         in the position they have here.
-       - Ids that used to exist here but are gone now are HIDDEN
-         (soft-deleted, not erased) in the user's copy — they stop
-         counting toward totals but nothing is destroyed.
-       - Ids that still exist in both are left ALONE — if the user
-         edited that item's text, their edit wins, this file does
-         NOT overwrite it.
-     If the user is mid-checklist (something already checked) the
-     merge is deferred until they start their next flight, so the
-     list never changes under them mid-run.
+   - Every update needs a permanent unique `id` and increasing
+     `sequence`. Never edit or reuse a shipped update.
+   - `type: "mandatory"` is applied automatically for every user.
+   - `type: "optional"` is offered with Apply / Skip actions. Keep
+     optional content out of this mandatory baseline; add it only
+     through that update's operations.
+   - Operations are explicit and idempotent, so mandatory text,
+     placement and order changes are enforceable without pulling in
+     a declined optional update.
+   - A started flight is never changed. Accepted/mandatory updates
+     wait for the next flight when any flight data already exists.
 
-   RULES FOR EDITING:
+   AUTHORING RULES:
 
-   1. Changing `text` on an EXISTING id updates the label shown to
-      brand-new users only — existing users keep whatever text is
-      already in their local copy (by design, see above). If you
-      really need to force new wording onto everyone, give the item
-      a new id instead (treat the old one as removed).
-   2. Reordering existing items (moving lines around without
-      changing ids) only affects brand-new installs and anyone who
-      resets their template ("Şablonu sıfırla" in the edit screen).
-      Existing users keep their current order — the merge never
-      reshuffles items that already exist on both sides.
-   3. Adding a brand-new item: add a new object with a NEW, UNIQUE
-      id (never reuse an old id). Put it wherever you want it to
-      appear — that position is exactly where it gets inserted for
-      everyone on next merge.
-   4. Removing an item: just delete its object from this file. It
-      will be hidden (not erased) for everyone who already has it.
-   5. IMPORTANT — every time you add, remove, or rename an id here,
-      bump `version` by 1 below. If you only reword existing text
-      without touching ids, bumping version is optional (it won't
-      change anything for existing users anyway, see rule 1).
-   6. Ids just need to be unique within the whole template — the
-      "s<section><i item>" pattern is only a convention, not
-      required. Never start a new id with "u-" — that prefix is
-      reserved for items end-users create themselves in the edit
-      screen, so the merge logic always leaves it alone.
-   7. `critical` = true shows the red "KRİTİK" tag and red checkbox.
-   8. `phase` groups sections under a collapsible header. Valid
-      values: "hazirlik", "saha", "ucus-sonrasi".
-   9. `blocking` is currently unused by the app logic — kept for
-      forward compatibility, safe to leave as false.
+   1. Update this baseline for mandatory changes, bump `version`,
+      and append a matching mandatory migration below.
+   2. For optional changes, append only an optional migration below.
+   3. Supported operations are `upsertItem`, `removeItem`,
+      `setItemOrder`, `upsertSection`, `removeSection`, and
+      `setSectionOrder` (see js/app.js "Template updates").
+   4. Item and section ids must be globally unique. Never start a
+      default id with "u-"; that prefix belongs to user content.
+   5. `critical` only controls the red "KRİTİK" styling. Every
+      visible checklist item counts toward completion.
+   6. `phase` is "hazirlik", "saha", or "ucus-sonrasi".
+   7. Bump the service-worker cache in sw.js for every release.
    ============================================================ */
 
 window.DEFAULT_TEMPLATE = {
   name: "Uçuş Öncesi Checklist",
-  version: 3,
+  version: 5,
 
   sections: [
 
@@ -66,12 +43,11 @@ window.DEFAULT_TEMPLATE = {
       id: "s1", title: "HAZIRLIK", phase: "hazirlik", blocking: false,
       items: [
         { id: "s1i1", text: "Pusula kalibrasyonları yapıldı", critical: false },
-        { id: "s1i2", text: "Uçak bataryaları ve kumanda (verici) bataryası tam şarj", critical: false },
+        { id: "s1i2a", text: "Uçak bataryaları tam şarj", critical: false },
+        { id: "s1i2b", text: "Kumanda (verici) bataryası tam şarj", critical: false },
+        { id: "s1i2c", text: "Anten Tracker bataryası şarjı yeterli seviyede", critical: false },
         { id: "s1i3", text: "Yer istasyonu (GCS) bilgisayarının şarjı tam", critical: false },
-        { id: "s1i4", text: "Görev planı (mission) Mission Planner'a yüklendi ve waypoint'ler gözden geçirildi", critical: false },
-        { id: "s1i5", text: "Yedek pervane", critical: false },
-        { id: "s1i6", text: "Yedek uçuş bataryası (şarjlı) ve yedek kumanda pili", critical: false },
-        { id: "s1i7", text: "Yedek vida/somun, control horn", critical: false }
+        { id: "s1i4", text: "Görev planı (mission) Mission Planner'a yüklendi ve waypoint'ler gözden geçirildi", critical: false }
       ]
     },
 
@@ -81,9 +57,13 @@ window.DEFAULT_TEMPLATE = {
       items: [
         { id: "s1ai1", text: "Yedek pervane", critical: false },
         { id: "s1ai2", text: "Yedek GPS", critical: false },
+        { id: "s1ai29", text: "Kumanda", critical: false },
+        { id: "s1ai30", text: "Anten Tracker", critical: false },
         { id: "s1ai3", text: "Uçak Pili / İnverter Pili", critical: false },
         { id: "s1ai4", text: "Yedek Pil", critical: false },
+        { id: "s1ai31", text: "Yedek uçuş bataryası (şarjlı) ve yedek kumanda pili", critical: false },
         { id: "s1ai5", text: "Servo Yekeler", critical: false },
+        { id: "s1ai32", text: "Yedek vida/somun, control horn", critical: false },
         { id: "s1ai6", text: "Pervane Somunları", critical: false },
         { id: "s1ai7", text: "Yedek Somun", critical: false },
         { id: "s1ai8", text: "Pervane Sıkma Teli", critical: false },
@@ -99,13 +79,14 @@ window.DEFAULT_TEMPLATE = {
         { id: "s1ai18", text: "Hızlı Yapıştırıcı", critical: false },
         { id: "s1ai19", text: "Bantlar (Kağıt, Lifli, Çift Taraflı)", critical: false },
         { id: "s1ai20", text: "Kelepçe", critical: false },
-        { id: "s1ai21", text: "Cırt Cırt", critical: false },
         { id: "s1ai22", text: "Lastik", critical: false },
         { id: "s1ai23", text: "Silikon Çubuklar", critical: false },
         { id: "s1ai24", text: "Vida Kutusu", critical: false },
         { id: "s1ai25", text: "USB Kablo (Anten Tracker için)", critical: false },
         { id: "s1ai26", text: "Çakmak", critical: false },
         { id: "s1ai27", text: "İnverter", critical: false },
+        { id: "s1ai33", text: "Kırmızı Hedef", critical: false },
+        { id: "s1ai34", text: "Mavi Hedef", critical: false },
         { id: "s1ai28", text: "2x Tabure", critical: false }
       ]
     },
@@ -173,3 +154,59 @@ window.DEFAULT_TEMPLATE = {
 
   ]
 };
+
+/* ============================================================
+   Append-only update catalog for existing installations.
+
+   Optional update example (do not uncomment; use fresh ids):
+   {
+     id: "optional-example", sequence: 3, version: 6,
+     type: "optional", title: "İsteğe bağlı liste güncellemesi",
+     summary: "Örnek madde eklenir.",
+     operations: [
+       { op:"upsertItem", sectionId:"s1", afterId:"s1i1",
+         item:{ id:"example-id", text:"Örnek", critical:false } }
+     ]
+   }
+   ============================================================ */
+window.TEMPLATE_UPDATES = [
+  {
+    id: "2026-08-battery-and-toolbox",
+    sequence: 1,
+    version: 4,
+    type: "mandatory",
+    title: "Zorunlu batarya ve takım çantası güncellemesi",
+    summary: "Batarya kontrolleri ayrıldı; Anten Tracker kontrolü ve takım çantası malzemeleri güncellendi.",
+    operations: [
+      { op:"upsertSection", position:"start", section:{ id:"s1", title:"HAZIRLIK", phase:"hazirlik", blocking:false } },
+      { op:"upsertSection", afterId:"s1", section:{ id:"s1a", title:"TAKIM ÇANTASI", phase:"hazirlik", blocking:false } },
+      { op:"removeItem", id:"s1i2" },
+      { op:"removeItem", id:"s1i5" },
+      { op:"removeItem", id:"s1i6" },
+      { op:"removeItem", id:"s1i7" },
+      { op:"upsertItem", sectionId:"s1", afterId:"s1i1", item:{ id:"s1i2a", text:"Uçak bataryaları tam şarj", critical:false } },
+      { op:"upsertItem", sectionId:"s1", afterId:"s1i2a", item:{ id:"s1i2b", text:"Kumanda (verici) bataryası tam şarj", critical:false } },
+      { op:"upsertItem", sectionId:"s1", afterId:"s1i2b", item:{ id:"s1i2c", text:"Anten Tracker bataryası şarjı yeterli seviyede", critical:false } },
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai2", item:{ id:"s1ai29", text:"Kumanda", critical:false } },
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai29", item:{ id:"s1ai30", text:"Anten Tracker", critical:false } },
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai4", item:{ id:"s1ai31", text:"Yedek uçuş bataryası (şarjlı) ve yedek kumanda pili", critical:false } },
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai5", item:{ id:"s1ai32", text:"Yedek vida/somun, control horn", critical:false } },
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai27", item:{ id:"s1ai33", text:"Kırmızı Hedef", critical:false } },
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai33", item:{ id:"s1ai34", text:"Mavi Hedef", critical:false } },
+      { op:"setItemOrder", sectionId:"s1", ids:["s1i1","s1i2a","s1i2b","s1i2c","s1i3","s1i4"] },
+      { op:"setItemOrder", sectionId:"s1a", ids:["s1ai1","s1ai2","s1ai29","s1ai30","s1ai3","s1ai4","s1ai31","s1ai5","s1ai32","s1ai6","s1ai7","s1ai8","s1ai9","s1ai10","s1ai11","s1ai12","s1ai13","s1ai14","s1ai15","s1ai16","s1ai17","s1ai18","s1ai19","s1ai20","s1ai21","s1ai22","s1ai23","s1ai24","s1ai25","s1ai26","s1ai27","s1ai33","s1ai34","s1ai28"] }
+    ]
+  },
+  {
+    id: "2026-08-remove-cirt-cirt",
+    sequence: 2,
+    version: 5,
+    type: "mandatory",
+    title: "Zorunlu takım çantası güncellemesi",
+    summary: "Cırt Cırt, Takım Çantası listesinden kaldırıldı.",
+    operations: [
+      { op:"removeItem", id:"s1ai21", hard:true },
+      { op:"setItemOrder", sectionId:"s1a", ids:["s1ai1","s1ai2","s1ai29","s1ai30","s1ai3","s1ai4","s1ai31","s1ai5","s1ai32","s1ai6","s1ai7","s1ai8","s1ai9","s1ai10","s1ai11","s1ai12","s1ai13","s1ai14","s1ai15","s1ai16","s1ai17","s1ai18","s1ai19","s1ai20","s1ai22","s1ai23","s1ai24","s1ai25","s1ai26","s1ai27","s1ai33","s1ai34","s1ai28"] }
+    ]
+  }
+];

@@ -8,6 +8,7 @@ var LS_TEMPLATE = "checklist:template";
 var LS_RUNS = "checklist:runs";
 var LS_ACTIVE = "checklist:activeRun";
 var LS_THEME = "checklist:theme";
+var LS_UPDATE_STATE = "checklist:templateUpdateState";
 
 /* ============================================================
    Theme
@@ -39,6 +40,7 @@ function renderThemePicker(){
 // Defaults now live in js/default-template.js (loaded before this file) so
 // they're easy to find and edit without wading through app logic.
 var DEFAULT_TEMPLATE = window.DEFAULT_TEMPLATE;
+var TEMPLATE_UPDATES = window.TEMPLATE_UPDATES || [];
 
 function deepClone(o){ return typeof structuredClone==="function"?structuredClone(o):JSON.parse(JSON.stringify(o)); }
 function loadJSON(key, fallback){
@@ -49,7 +51,12 @@ function loadJSON(key, fallback){
   }catch(e){ return fallback; }
 }
 function saveJSON(key, val){
-  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+  try{
+    localStorage.setItem(key, JSON.stringify(val));
+    return true;
+  }catch(e){
+    return false;
+  }
 }
 function uid(prefix){
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
@@ -103,6 +110,7 @@ function createRun(tpl, existingRuns){
     aircraft: "",
     wind: "",
     flightNote: "",
+    flightNoteHtml: "",
     checks: {},
     templateSnapshot: deepClone(tpl.sections)
   };
@@ -119,9 +127,11 @@ function ensureRunChecks(tpl, run){
 }
 
 function runHasProgress(run){
-  if(!run || !run.checks) return false;
-  for(var k in run.checks){
-    if(run.checks[k] && run.checks[k].ok) return true;
+  if(!run) return false;
+  if(String(run.aircraft || "").trim() || String(run.wind || "").trim() || String(run.flightNote || "").trim()) return true;
+  for(var k in (run.checks || {})){
+    var check = run.checks[k];
+    if(check && (check.ok || check.ts || String(check.note || "").trim())) return true;
   }
   return false;
 }
@@ -152,15 +162,15 @@ function parseWorkbookToSections(wb){
     if(aIsNum && bStr !== ""){
       if(!current){
         sIdx++;
-        current = { id:"s"+sIdx, title:"Bölüm "+sIdx, phase:"saha", blocking:false, items:[] };
+        current = { id:uid("u-s"), title:"Bölüm "+sIdx, phase:"saha", blocking:false, items:[], origin:"user" };
         sections.push(current);
       }
-      current.items.push({ id: current.id+"i"+(current.items.length+1), text: bStr, critical:false });
+      current.items.push({ id:uid("u-"), text:bStr, critical:false, origin:"user" });
       return;
     }
     if(!aIsNum && aStr !== ""){
       sIdx++;
-      current = { id:"s"+sIdx, title:stripSectionPrefix(aStr), phase:"saha", blocking:false, items:[] };
+      current = { id:uid("u-s"), title:stripSectionPrefix(aStr), phase:"saha", blocking:false, items:[], origin:"user" };
       sections.push(current);
       return;
     }
@@ -176,166 +186,415 @@ function importTemplateFromWorkbook(wb, name){
   return { name: name || "İçe aktarılan şablon", version:1, sections: sections };
 }
 
-/* ============================================================
-   Template versioning / merge
-   ============================================================ */
-var LS_NOTICE_DISMISSED = "checklist:noticeDismissedVersion";
-
-function mergeSectionItems(defSection, storedSection, changes){
-  var storedItems = (storedSection && storedSection.items) || [];
-  var result = storedItems.slice();
-  var storedIds = {};
-  result.forEach(function(it){ storedIds[it.id] = true; });
-
-  var cursor = -1;
-  defSection.items.forEach(function(defItem){
-    if(storedIds[defItem.id]){
-      cursor = result.findIndex(function(it){ return it.id === defItem.id; });
-    } else {
-      var newItem = { id: defItem.id, text: defItem.text, critical: !!defItem.critical };
-      result.splice(cursor+1, 0, newItem);
-      cursor = cursor+1;
-      changes.addedItems.push({ sectionTitle: defSection.title, text: defItem.text });
+function normalizeImportedUserIds(tpl){
+  var usedIds = {};
+  (tpl.sections || []).forEach(function(section){
+    var userSection = section.origin === "user" || /^u-/.test(section.id || "");
+    if(userSection && !/^u-/.test(section.id || "")) section.id = uid("u-s");
+    if(!section.id || usedIds[section.id]){
+      section.id = uid("u-s");
+      section.origin = "user";
     }
-  });
-
-  var defaultIds = {};
-  defSection.items.forEach(function(it){ defaultIds[it.id] = true; });
-  result = result.map(function(it){
-    if(!defaultIds[it.id] && !/^u-/.test(it.id)){
-      if(!it.hidden) changes.hiddenItems.push({ sectionTitle: defSection.title, text: it.text });
-      return Object.assign({}, it, { hidden:true });
-    }
-    if(it.hidden && defaultIds[it.id]){
-      var copy = Object.assign({}, it);
-      delete copy.hidden;
-      return copy;
-    }
-    return it;
-  });
-  return result;
-}
-
-function mergeTemplate(defaultTpl, storedTpl){
-  var changes = { addedSections:[], addedItems:[], hiddenSections:[], hiddenItems:[] };
-  var storedSections = (storedTpl && storedTpl.sections) || [];
-  var resultSections = storedSections.slice();
-  var storedSecIds = {};
-  resultSections.forEach(function(s){ storedSecIds[s.id] = true; });
-
-  var cursor = -1;
-  defaultTpl.sections.forEach(function(defSec){
-    if(storedSecIds[defSec.id]){
-      var idx = resultSections.findIndex(function(s){ return s.id === defSec.id; });
-      var mergedItems = mergeSectionItems(defSec, resultSections[idx], changes);
-      resultSections[idx] = Object.assign({}, resultSections[idx], { items: mergedItems });
-      cursor = idx;
-    } else {
-      var newSection = deepClone(defSec);
-      newSection.items = newSection.items.map(function(it){ return { id: it.id, text: it.text, critical: !!it.critical }; });
-      resultSections.splice(cursor+1, 0, newSection);
-      cursor = cursor+1;
-      changes.addedSections.push(newSection.title);
-    }
-  });
-
-  var defaultSecIds = {};
-  defaultTpl.sections.forEach(function(s){ defaultSecIds[s.id] = true; });
-  resultSections = resultSections.map(function(s){
-    if(!defaultSecIds[s.id] && !/^u-/.test(s.id)){
-      if(!s.hidden) changes.hiddenSections.push(s.title);
-      return Object.assign({}, s, { hidden:true });
-    }
-    if(s.hidden && defaultSecIds[s.id]){
-      var copy = Object.assign({}, s);
-      delete copy.hidden;
-      return copy;
-    }
-    return s;
-  });
-
-  var merged = { name: defaultTpl.name, version: defaultTpl.version, sections: resultSections };
-  return { template: merged, changes: changes };
-}
-
-function buildChangeSummary(changes, fromV, toV, deferred){
-  var parts = [];
-  if(changes.addedSections.length){
-    parts.push(changes.addedSections.length + " yeni bölüm eklendi (" + changes.addedSections.join(", ") + ")");
-  }
-  if(changes.addedItems.length){
-    var bySec = {};
-    var order = [];
-    changes.addedItems.forEach(function(x){
-      if(!bySec[x.sectionTitle]){ bySec[x.sectionTitle] = 0; order.push(x.sectionTitle); }
-      bySec[x.sectionTitle]++;
+    usedIds[section.id] = true;
+    if(!Array.isArray(section.items)) section.items = [];
+    section.items.forEach(function(item){
+      var userItem = item.origin === "user" || /^u-/.test(item.id || "");
+      if(userItem && !/^u-/.test(item.id || "")) item.id = uid("u-");
+      if(!item.id || usedIds[item.id]){
+        item.id = uid("u-");
+        item.origin = "user";
+      }
+      usedIds[item.id] = true;
     });
-    var itemParts = order.map(function(t){ return "\""+t+"\"'e "+bySec[t]+" yeni madde"; });
-    parts.push(itemParts.join(", ") + " eklendi");
-  }
-  if(changes.hiddenSections.length){
-    parts.push(changes.hiddenSections.length + " bölüm kaldırıldı");
-  }
-  if(changes.hiddenItems.length){
-    parts.push(changes.hiddenItems.length + " madde kaldırıldı");
-  }
-  var msg = "Şablon güncellendi (v"+fromV+" → v"+toV+")";
-  msg += parts.length ? (": " + parts.join("; ") + ".") : ".";
-  if(deferred) msg += " Değişiklikler bir sonraki uçuşta uygulanacak.";
-  return msg;
+  });
+  return tpl;
 }
 
-function queueNotice(message, version){
-  var dismissed = loadJSON(LS_NOTICE_DISMISSED, 0);
-  if(version <= dismissed) return;
-  state.activeNotice = { message: message, version: version };
+/* ============================================================
+   Template updates
+
+   Updates are independent, append-only migrations. Mandatory
+   migrations cannot be declined. Optional migrations are applied
+   only after an explicit decision, so a later mandatory release
+   cannot accidentally include an earlier declined change.
+   ============================================================ */
+function sortedTemplateUpdates(){
+  return TEMPLATE_UPDATES.slice().sort(function(a, b){ return a.sequence - b.sequence; });
+}
+function emptyTemplateUpdateState(){
+  return { schema:1, applied:[], optionalDecisions:{} };
+}
+function normalizeTemplateUpdateState(raw){
+  var clean = emptyTemplateUpdateState();
+  if(!raw || typeof raw !== "object") return clean;
+  if(Array.isArray(raw.applied)){
+    raw.applied.forEach(function(id){ if(typeof id === "string" && clean.applied.indexOf(id) < 0) clean.applied.push(id); });
+  }
+  if(raw.optionalDecisions && typeof raw.optionalDecisions === "object"){
+    Object.keys(raw.optionalDecisions).forEach(function(id){
+      var decision = raw.optionalDecisions[id];
+      if(decision === "accepted" || decision === "declined") clean.optionalDecisions[id] = decision;
+    });
+  }
+  return clean;
+}
+function freshTemplateUpdateState(){
+  var fresh = emptyTemplateUpdateState();
+  sortedTemplateUpdates().forEach(function(update){
+    if(update.type === "mandatory") fresh.applied.push(update.id);
+  });
+  return fresh;
+}
+function updateIsApplied(update){
+  return state.updateState.applied.indexOf(update.id) >= 0;
+}
+function updateIsEffective(update){
+  if(update.type === "mandatory") return true;
+  return state.updateState.optionalDecisions[update.id] === "accepted";
+}
+function pendingEffectiveUpdates(){
+  return sortedTemplateUpdates().filter(function(update){ return updateIsEffective(update) && !updateIsApplied(update); });
+}
+function nextOptionalUpdate(){
+  return sortedTemplateUpdates().find(function(update){
+    return update.type === "optional" && !updateIsApplied(update) && !state.updateState.optionalDecisions[update.id];
+  }) || null;
+}
+function findTemplateSection(tpl, sectionId){
+  return (tpl.sections || []).find(function(section){ return section.id === sectionId; }) || null;
+}
+function recoverBaselineSection(tpl, sectionId){
+  var target = findTemplateSection(tpl, sectionId);
+  if(target) return target;
+  var defaults = (DEFAULT_TEMPLATE && DEFAULT_TEMPLATE.sections) || [];
+  var defaultIndex = defaults.findIndex(function(section){ return section.id === sectionId; });
+  if(defaultIndex < 0) return null;
+  var def = defaults[defaultIndex];
+  target = { id:def.id, title:def.title, phase:def.phase, blocking:!!def.blocking, items:[] };
+  var index = tpl.sections.length;
+  for(var i=defaultIndex-1;i>=0;i--){
+    var previous = tpl.sections.findIndex(function(section){ return section.id === defaults[i].id; });
+    if(previous >= 0){ index = previous + 1; break; }
+  }
+  tpl.sections.splice(index, 0, target);
+  return target;
+}
+function insertionIndex(list, op){
+  if(op.beforeId){
+    var before = list.findIndex(function(entry){ return entry.id === op.beforeId; });
+    if(before >= 0) return before;
+  }
+  if(op.afterId){
+    var after = list.findIndex(function(entry){ return entry.id === op.afterId; });
+    if(after >= 0) return after + 1;
+  }
+  if(op.position === "start") return 0;
+  return list.length;
+}
+function removeItemForUpdate(tpl, op){
+  (tpl.sections || []).forEach(function(section){
+    if(op.hard){
+      section.items = (section.items || []).filter(function(item){ return item.id !== op.id; });
+    } else {
+      section.items = (section.items || []).map(function(item){
+        return item.id === op.id ? Object.assign({}, item, { hidden:true }) : item;
+      });
+    }
+  });
+}
+function upsertItemForUpdate(tpl, op){
+  var target = findTemplateSection(tpl, op.sectionId) || recoverBaselineSection(tpl, op.sectionId);
+  if(!target) throw new Error("update-section-not-found:" + op.sectionId);
+  var existing = null;
+  (tpl.sections || []).forEach(function(section){
+    section.items = (section.items || []).filter(function(item){
+      if(item.id !== op.item.id) return true;
+      if(!existing) existing = item;
+      return false;
+    });
+  });
+  var item = Object.assign({}, existing || {}, op.item);
+  delete item.hidden;
+  delete item.origin;
+  var index = insertionIndex(target.items, op);
+  target.items.splice(index, 0, item);
+}
+function setItemOrderForUpdate(tpl, op){
+  var section = findTemplateSection(tpl, op.sectionId);
+  if(!section) return;
+  var wanted = {};
+  op.ids.forEach(function(id, index){ wanted[id] = index; });
+  var byId = {};
+  section.items.forEach(function(item){
+    if(item.hidden || !Object.prototype.hasOwnProperty.call(wanted, item.id)) return;
+    if(!byId[item.id]) byId[item.id] = item;
+    else item.hidden = true;
+  });
+  var ordered = op.ids.map(function(id){ return byId[id]; }).filter(Boolean);
+  var cursor = 0;
+  section.items = section.items.map(function(item){
+    if(!item.hidden && Object.prototype.hasOwnProperty.call(wanted, item.id)) return ordered[cursor++];
+    return item;
+  });
+}
+function removeSectionForUpdate(tpl, sectionId){
+  var result = [];
+  (tpl.sections || []).forEach(function(section){
+    if(section.id !== sectionId){
+      result.push(section);
+      return;
+    }
+    var userItems = (section.items || []).filter(function(item){
+      return item.origin === "user" || /^u-/.test(item.id || "");
+    });
+    var hiddenSection = Object.assign({}, section, {
+      hidden:true,
+      items:(section.items || []).filter(function(item){ return userItems.indexOf(item) < 0; })
+    });
+    result.push(hiddenSection);
+    if(userItems.length){
+      result.push({
+        id:uid("u-s"),
+        title:(section.title || "Bölüm") + " — Kişisel",
+        phase:section.phase || "saha",
+        blocking:false,
+        origin:"user",
+        items:userItems
+      });
+    }
+  });
+  tpl.sections = result;
+}
+function upsertSectionForUpdate(tpl, op){
+  var existing = null;
+  tpl.sections = (tpl.sections || []).filter(function(section){
+    if(section.id !== op.section.id) return true;
+    if(!existing) existing = section;
+    return false;
+  });
+  var section = Object.assign({}, existing || { items:[] }, op.section);
+  if(!Array.isArray(section.items)) section.items = [];
+  delete section.hidden;
+  delete section.origin;
+  tpl.sections.splice(insertionIndex(tpl.sections, op), 0, section);
+}
+function setSectionOrderForUpdate(tpl, op){
+  var wanted = {};
+  op.ids.forEach(function(id, index){ wanted[id] = index; });
+  var byId = {};
+  tpl.sections.forEach(function(section){
+    if(section.hidden || !Object.prototype.hasOwnProperty.call(wanted, section.id)) return;
+    if(!byId[section.id]) byId[section.id] = section;
+    else section.hidden = true;
+  });
+  var ordered = op.ids.map(function(id){ return byId[id]; }).filter(Boolean);
+  var cursor = 0;
+  tpl.sections = tpl.sections.map(function(section){
+    if(!section.hidden && Object.prototype.hasOwnProperty.call(wanted, section.id)) return ordered[cursor++];
+    return section;
+  });
+}
+function applyTemplateUpdateOperation(tpl, op){
+  if(op.op === "removeItem") removeItemForUpdate(tpl, op);
+  else if(op.op === "upsertItem") upsertItemForUpdate(tpl, op);
+  else if(op.op === "setItemOrder") setItemOrderForUpdate(tpl, op);
+  else if(op.op === "removeSection") removeSectionForUpdate(tpl, op.id);
+  else if(op.op === "upsertSection") upsertSectionForUpdate(tpl, op);
+  else if(op.op === "setSectionOrder") setSectionOrderForUpdate(tpl, op);
+  else throw new Error("unknown-template-update-operation:" + op.op);
+}
+function applyTemplateUpdate(update){
+  (update.operations || []).forEach(function(op){ applyTemplateUpdateOperation(state.template, op); });
+  state.template.version = Math.max(templateVersion(state.template), update.version || 0);
+}
+function syncBlankRunToTemplate(){
+  if(!state.run || runHasProgress(state.run)) return;
+  state.run.templateSnapshot = deepClone(state.template.sections);
+  ensureRunChecks(state.template, state.run);
+  persistRun();
+}
+function applyEligibleTemplateUpdates(syncRun){
+  var catalog = sortedTemplateUpdates();
+  var pending = pendingEffectiveUpdates();
+  if(!pending.length) return [];
+  var firstSequence = pending[0].sequence;
+  var newlyApplied = [];
+  var originalTemplate = state.template;
+  state.template = deepClone(originalTemplate);
+  try{
+    catalog.forEach(function(update){
+      if(update.sequence < firstSequence) return;
+      if(!updateIsEffective(update)) return;
+      if(!updateIsApplied(update)) newlyApplied.push(update);
+      applyTemplateUpdate(update);
+    });
+  }catch(error){
+    state.template = originalTemplate;
+    throw error;
+  }
+  if(!persistTemplate()){
+    state.template = originalTemplate;
+    throw new Error("template-update-save-failed");
+  }
+  newlyApplied.forEach(function(update){
+    if(state.updateState.applied.indexOf(update.id) < 0) state.updateState.applied.push(update.id);
+  });
+  persistTemplateUpdateState();
+  state.pendingTemplateUpdate = false;
+  if(syncRun) syncBlankRunToTemplate();
+  renderTemplateVersionBadge();
+  return newlyApplied;
+}
+function updatesSummary(updates){
+  return updates.map(function(update){ return update.summary; }).filter(Boolean).join(" ");
+}
+function showAppliedUpdateNotice(updates){
+  if(!updates.length) return;
+  var allOptional = updates.every(function(update){ return update.type === "optional"; });
+  state.activeNotice = {
+    kind:"applied",
+    title: allOptional ? "İsteğe bağlı güncelleme uygulandı" : "Zorunlu güncelleme uygulandı",
+    message: updatesSummary(updates)
+  };
   renderNotice();
+}
+function showTemplateUpdateError(error){
+  if(window.console && console.error) console.error(error);
+  state.pendingTemplateUpdate = true;
+  state.activeNotice = {
+    kind:"error",
+    title:"Liste güncellemesi uygulanamadı",
+    message:"Yerel depolama kullanılamadığı için güncelleme kaydedilemedi. Depolama alanını kontrol edip uygulamayı yeniden açın."
+  };
+  renderNotice();
+}
+function refreshTemplateUpdateNotice(hasProgress){
+  if(state.activeNotice && (state.activeNotice.kind === "applied" || state.activeNotice.kind === "error")){
+    renderNotice();
+    return;
+  }
+  var pending = pendingEffectiveUpdates();
+  if(hasProgress && pending.length){
+    state.pendingTemplateUpdate = true;
+    var allOptional = pending.every(function(update){ return update.type === "optional"; });
+    state.activeNotice = {
+      kind:"deferred",
+      title: allOptional ? "İsteğe bağlı güncelleme sıraya alındı" : "Zorunlu liste güncellemesi",
+      message: updatesSummary(pending) + " Mevcut uçuş değiştirilmeyecek; güncelleme yeni uçuş başladığında uygulanacak."
+    };
+    renderNotice();
+    return;
+  }
+  state.pendingTemplateUpdate = false;
+  var optional = nextOptionalUpdate();
+  if(optional){
+    state.activeNotice = {
+      kind:"optional",
+      title:"İsteğe bağlı liste güncellemesi",
+      message: (optional.title ? optional.title + ": " : "") + (optional.summary || "Yeni bir checklist güncellemesi hazır.") + " Aktif uçuş varsa mevcut liste değişmez; güncelleme sonraki uçuşta uygulanır.",
+      update: optional
+    };
+  } else {
+    state.activeNotice = null;
+  }
+  renderNotice();
+}
+function checkTemplateUpdates(hasProgress){
+  var applied = [];
+  try{
+    if(!hasProgress) applied = applyEligibleTemplateUpdates(true);
+  }catch(error){
+    showTemplateUpdateError(error);
+    return;
+  }
+  if(applied.length) showAppliedUpdateNotice(applied);
+  else refreshTemplateUpdateNotice(hasProgress);
+}
+function focusAfterTemplateUpdateAction(){
+  setTimeout(function(){
+    var notice = state.activeNotice;
+    if(notice && notice.kind === "optional"){
+      var accept = document.getElementById("template-update-accept");
+      if(accept) accept.focus();
+    } else if(notice && notice.kind === "applied"){
+      var dismiss = document.getElementById("template-notice-dismiss");
+      if(dismiss) dismiss.focus();
+    } else if(notice){
+      var title = document.getElementById("template-notice-title");
+      if(title) title.focus();
+    } else {
+      var stable = document.getElementById("search-toggle-btn");
+      if(stable) stable.focus();
+    }
+  }, 0);
+}
+function acceptOptionalTemplateUpdate(){
+  var notice = state.activeNotice;
+  if(!notice || notice.kind !== "optional") return;
+  state.updateState.optionalDecisions[notice.update.id] = "accepted";
+  persistTemplateUpdateState();
+  state.activeNotice = null;
+  var hasProgress = runHasProgress(state.run);
+  if(hasProgress){
+    refreshTemplateUpdateNotice(true);
+    focusAfterTemplateUpdateAction();
+    return;
+  }
+  var applied;
+  try{
+    applied = applyEligibleTemplateUpdates(true);
+  }catch(error){
+    showTemplateUpdateError(error);
+    focusAfterTemplateUpdateAction();
+    return;
+  }
+  if(applied.length) showAppliedUpdateNotice(applied);
+  else refreshTemplateUpdateNotice(false);
+  focusAfterTemplateUpdateAction();
+}
+function declineOptionalTemplateUpdate(){
+  var notice = state.activeNotice;
+  if(!notice || notice.kind !== "optional") return;
+  state.updateState.optionalDecisions[notice.update.id] = "declined";
+  persistTemplateUpdateState();
+  state.activeNotice = null;
+  refreshTemplateUpdateNotice(runHasProgress(state.run));
+  showToast("İsteğe bağlı güncelleme atlandı");
+  focusAfterTemplateUpdateAction();
 }
 function dismissNotice(){
-  if(state.activeNotice) saveJSON(LS_NOTICE_DISMISSED, state.activeNotice.version);
+  if(!state.activeNotice || state.activeNotice.kind !== "applied") return;
   state.activeNotice = null;
-  renderNotice();
+  refreshTemplateUpdateNotice(runHasProgress(state.run));
+  focusAfterTemplateUpdateAction();
 }
 function renderNotice(){
   var el = document.getElementById("template-notice");
+  var titleEl = document.getElementById("template-notice-title");
   var textEl = document.getElementById("template-notice-text");
-  if(!el || !textEl) return;
-  if(state.activeNotice){
-    textEl.textContent = state.activeNotice.message;
-    el.hidden = false;
-  } else {
+  var actionsEl = document.getElementById("template-notice-actions");
+  var acceptBtn = document.getElementById("template-update-accept");
+  var declineBtn = document.getElementById("template-update-decline");
+  var dismissBtn = document.getElementById("template-notice-dismiss");
+  if(!el || !titleEl || !textEl || !actionsEl || !acceptBtn || !declineBtn || !dismissBtn) return;
+  if(!state.activeNotice){
     el.hidden = true;
+    return;
   }
+  var notice = state.activeNotice;
+  titleEl.textContent = notice.title;
+  textEl.textContent = notice.message;
+  var isOptional = notice.kind === "optional";
+  actionsEl.hidden = !isOptional;
+  acceptBtn.hidden = !isOptional;
+  declineBtn.hidden = !isOptional;
+  dismissBtn.hidden = notice.kind !== "applied";
+  acceptBtn.textContent = "Güncellemeyi uygula";
+  el.hidden = false;
 }
 function renderTemplateVersionBadge(){
   var el = document.getElementById("tpl-version-badge");
   if(el) el.textContent = "Şablon v" + templateVersion(state.template);
-}
-
-function applyPendingTemplateMerge(){
-  var fromV = templateVersion(state.template);
-  var toV = templateVersion(DEFAULT_TEMPLATE);
-  if(toV <= fromV) return false;
-  var res = mergeTemplate(DEFAULT_TEMPLATE, state.template);
-  state.template = res.template;
-  persistTemplate();
-  state.pendingTemplateUpdate = false;
-  queueNotice(buildChangeSummary(res.changes, fromV, toV, false), toV);
-  renderTemplateVersionBadge();
-  return true;
-}
-
-function checkTemplateUpdate(hasProgress){
-  var fromV = templateVersion(state.template);
-  var toV = templateVersion(DEFAULT_TEMPLATE);
-  if(toV <= fromV){ state.pendingTemplateUpdate = false; return; }
-  if(!hasProgress){
-    applyPendingTemplateMerge();
-  } else {
-    state.pendingTemplateUpdate = true;
-    var res = mergeTemplate(DEFAULT_TEMPLATE, state.template);
-    queueNotice(buildChangeSummary(res.changes, fromV, toV, true), toV);
-  }
 }
 
 /* ============================================================
@@ -353,21 +612,30 @@ var state = {
   phaseEls: {},
   searchQuery: "",
   sectionObserver: null,
+  flightNoteEditor: null,
   activeNotice: null,
-  pendingTemplateUpdate: false
+  pendingTemplateUpdate: false,
+  updateState: null
 };
 
 function init(){
   var storedTemplate = loadJSON(LS_TEMPLATE, null);
   state.template = storedTemplate || deepClone(DEFAULT_TEMPLATE);
-  if(!storedTemplate) persistTemplate();
+  state.updateState = normalizeTemplateUpdateState(loadJSON(LS_UPDATE_STATE, null));
+  if(!storedTemplate){
+    state.updateState = freshTemplateUpdateState();
+    persistTemplate();
+    persistTemplateUpdateState();
+  }
   state.runs = loadJSON(LS_RUNS, []);
-  var activeRun = loadJSON(LS_ACTIVE, null);
-  checkTemplateUpdate(runHasProgress(activeRun));
-  if(!activeRun){ activeRun = createRun(state.template, state.runs); }
-  state.run = activeRun;
+  state.run = loadJSON(LS_ACTIVE, null);
+  checkTemplateUpdates(runHasProgress(state.run));
+  if(!state.run) state.run = createRun(state.template, state.runs);
   ensureRunChecks(state.template, state.run);
   saveJSON(LS_ACTIVE, state.run);
+  if(window.FlightNoteEditor){
+    state.flightNoteEditor = window.FlightNoteEditor.create({ root:document.getElementById("flight-note-editor") });
+  }
   renderAll();
   bindGlobalEvents();
   setupWakeLock();
@@ -455,7 +723,15 @@ function renderFlightHeader(){
   document.getElementById("f-date").value = r.date || todayStr();
   document.getElementById("f-aircraft").value = r.aircraft || "";
   document.getElementById("f-wind").value = r.wind || "";
-  document.getElementById("f-note").value = r.flightNote || "";
+  if(state.flightNoteEditor){
+    state.flightNoteEditor.setValue(r.flightNoteHtml || "", r.flightNote || "");
+    if(r.flightNoteHtml && state.flightNoteEditor.getHtml() !== r.flightNoteHtml){
+      r.flightNoteHtml = state.flightNoteEditor.getHtml();
+      persistRun();
+    }
+  } else {
+    document.getElementById("f-note").textContent = r.flightNote || "";
+  }
 }
 
 function itemNumberLabel(section, idx){
@@ -573,8 +849,7 @@ function buildItemEl(section, item, idx){
 
   var notePreview = document.createElement("span");
   notePreview.className = "item-note-preview";
-  notePreview.hidden = !check.note;
-  notePreview.textContent = check.note || "";
+  updateItemNotePreview(notePreview, check.note);
   bodyEl.appendChild(notePreview);
 
   tap.appendChild(checkEl);
@@ -584,8 +859,10 @@ function buildItemEl(section, item, idx){
   noteBtn.className = "item-note-btn";
   noteBtn.dataset.action = "toggle-note";
   noteBtn.dataset.id = item.id;
-  noteBtn.setAttribute("aria-label","Not ekle");
+  noteBtn.setAttribute("aria-label", check.note ? "Notu düzenle" : "Not ekle");
+  noteBtn.setAttribute("aria-expanded", "false");
   noteBtn.dataset.hasNote = check.note ? "true" : "false";
+  noteBtn.dataset.editing = "false";
   noteBtn.textContent = "Not";
 
   row.appendChild(tap);
@@ -599,6 +876,7 @@ function buildItemEl(section, item, idx){
   var ta = document.createElement("textarea");
   ta.value = check.note || "";
   ta.placeholder = "Not...";
+  ta.setAttribute("enterkeyhint", "done");
   ta.dataset.action = "note-input";
   ta.dataset.id = item.id;
   noteEditor.appendChild(ta);
@@ -629,8 +907,7 @@ function patchItem(itemId){
     checkEl.classList.add("item-check-pop");
   }
   var notePreview = li.querySelector(".item-note-preview");
-  notePreview.hidden = !check.note;
-  notePreview.textContent = check.note || "";
+  updateItemNotePreview(notePreview, check.note);
   var noteBtn = li.querySelector(".item-note-btn");
   noteBtn.dataset.hasNote = check.note ? "true" : "false";
 
@@ -802,27 +1079,71 @@ function vibrate(pattern){
 /* ============================================================
    Notes
    ============================================================ */
+function updateItemNotePreview(preview, note){
+  if(!preview) return;
+  preview.textContent = "";
+  preview.hidden = !note;
+  if(!note) return;
+
+  var label = document.createElement("span");
+  label.className = "item-note-label";
+  label.textContent = "Not:";
+  var value = document.createElement("span");
+  value.className = "item-note-value";
+  value.textContent = String(note);
+  preview.appendChild(label);
+  preview.appendChild(value);
+}
+
+function handleItemNoteKeydown(event){
+  var target = event.target;
+  if(!target || !target.matches('[data-action="note-input"]')) return;
+  if(event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+  event.preventDefault();
+  saveItemNote(target.dataset.id);
+}
+
 function toggleNoteEditor(itemId){
   var li = state.itemEls[itemId];
   if(!li) return;
   var editor = li.querySelector(".item-note-editor");
-  editor.hidden = !editor.hidden;
+  var noteBtn = li.querySelector(".item-note-btn");
+  if(!editor || !noteBtn) return;
   if(!editor.hidden){
-    var ta = editor.querySelector("textarea");
-    ta.focus();
+    saveItemNote(itemId);
+    return;
   }
-}
-var noteDebounce = {};
-function onNoteInput(itemId, value){
   var check = state.run.checks[itemId];
-  if(!check) return;
-  check.note = value;
-  check.ts = nowTs();
-  clearTimeout(noteDebounce[itemId]);
-  noteDebounce[itemId] = setTimeout(function(){
+  var ta = editor.querySelector("textarea");
+  ta.value = check ? (check.note || "") : "";
+  editor.hidden = false;
+  noteBtn.dataset.editing = "true";
+  noteBtn.textContent = "Kaydet";
+  noteBtn.setAttribute("aria-label", "Notu kaydet");
+  noteBtn.setAttribute("aria-expanded", "true");
+  ta.focus();
+}
+
+function saveItemNote(itemId){
+  var li = state.itemEls[itemId];
+  var check = state.run.checks[itemId];
+  if(!li || !check) return;
+  var editor = li.querySelector(".item-note-editor");
+  var noteBtn = li.querySelector(".item-note-btn");
+  var ta = editor && editor.querySelector("textarea");
+  if(!editor || !noteBtn || !ta) return;
+  if(check.note !== ta.value){
+    check.note = ta.value;
+    check.ts = nowTs();
     persistRun();
     patchItem(itemId);
-  }, 400);
+  }
+  editor.hidden = true;
+  noteBtn.dataset.editing = "false";
+  noteBtn.textContent = "Not";
+  noteBtn.setAttribute("aria-label", check.note ? "Notu düzenle" : "Not ekle");
+  noteBtn.setAttribute("aria-expanded", "false");
+  noteBtn.focus();
 }
 
 /* ============================================================
@@ -856,10 +1177,13 @@ function attachLongPress(el, itemId){
    Persistence
    ============================================================ */
 function persistRun(){
-  saveJSON(LS_ACTIVE, state.run);
+  return saveJSON(LS_ACTIVE, state.run);
 }
 function persistTemplate(){
-  saveJSON(LS_TEMPLATE, state.template);
+  return saveJSON(LS_TEMPLATE, state.template);
+}
+function persistTemplateUpdateState(){
+  return saveJSON(LS_UPDATE_STATE, state.updateState);
 }
 function persistRuns(){
   while(state.runs.length > 100) state.runs.pop();
@@ -877,17 +1201,25 @@ function persistRuns(){
    New flight
    ============================================================ */
 function startNewFlight(){
+  var appliedUpdates;
+  try{
+    appliedUpdates = applyEligibleTemplateUpdates(false);
+  }catch(error){
+    showToast("Zorunlu liste güncellemesi kaydedilemedi; yeni uçuş başlatılmadı");
+    return;
+  }
   var prev = state.run;
   prev.endedAt = nowTs();
   state.runs.unshift(prev);
   persistRuns();
-  if(state.pendingTemplateUpdate) applyPendingTemplateMerge();
   state.run = createRun(state.template, state.runs);
   state.manualPhaseOverride = {};
   lastGateArmed = null;
   navIndex = 0;
   persistRun();
   renderAll();
+  if(appliedUpdates.length) showAppliedUpdateNotice(appliedUpdates);
+  else refreshTemplateUpdateNotice(false);
   showToast("Yeni uçuş başlatıldı");
 }
 
@@ -1047,7 +1379,7 @@ function openHistoryRun(runId){
         '<span class="item-tap"><span class="item-check">'+(chk.ok?"✓":"")+'</span>'+
         '<span class="item-body"><span class="item-num mono">#'+String(idx+1).padStart(2,"0")+(item.critical?"  KRİTİK":"")+'</span>'+
         '<span class="item-text">'+escapeHtml(item.text)+'</span>'+
-        (chk.note ? '<span class="item-note-preview">'+escapeHtml(chk.note)+'</span>' : '')+
+        (chk.note ? '<span class="item-note-preview"><span class="item-note-label">Not:</span><span class="item-note-value">'+escapeHtml(chk.note)+'</span></span>' : '')+
         '</span></span>';
       ul.appendChild(li);
     });
@@ -1134,9 +1466,9 @@ function buildRunPdfSpec(run){
     metaLines: [
       { label:"Tarih", value: run.date },
       { label:"Uçak / Deneme no", value: run.aircraft },
-      { label:"Rüzgar / Hava", value: run.wind },
-      { label:"Uçuş notu", value: run.flightNote }
+      { label:"Rüzgar / Hava", value: run.wind }
     ],
+    flightNote: run.flightNote || null,
     armStamp: armed ? "ARM DURUMU: HAZIR ✓" : "ARM DURUMU: TAMAMLANMADI ("+c.done+"/"+c.total+")",
     notice: null,
     phases: phases
@@ -1197,19 +1529,42 @@ function importTemplateFile(file){
 function applyImportedTemplate(tpl){
   var prevTemplate = deepClone(state.template);
   var prevRun = deepClone(state.run);
-  state.template = tpl;
-  state.run.checks = {};
-  ensureRunChecks(state.template, state.run);
-  persistTemplate();
-  persistRun();
-  state.manualPhaseOverride = {};
-  navIndex = 0;
-  renderAll();
+  var prevUpdateState = deepClone(state.updateState);
+  var prevNotice = state.activeNotice;
+  var appliedUpdates;
+  try{
+    state.template = normalizeImportedUserIds(deepClone(tpl));
+    state.updateState = emptyTemplateUpdateState();
+    state.updateState.optionalDecisions = deepClone(prevUpdateState.optionalDecisions || {});
+    appliedUpdates = applyEligibleTemplateUpdates(false);
+    state.run.checks = {};
+    ensureRunChecks(state.template, state.run);
+    state.run.templateSnapshot = deepClone(state.template.sections);
+    persistTemplate();
+    persistRun();
+    state.manualPhaseOverride = {};
+    navIndex = 0;
+    renderAll();
+    if(appliedUpdates.length) showAppliedUpdateNotice(appliedUpdates);
+    else refreshTemplateUpdateNotice(runHasProgress(state.run));
+  }catch(error){
+    state.template = prevTemplate;
+    state.run = prevRun;
+    state.updateState = prevUpdateState;
+    state.activeNotice = prevNotice;
+    persistTemplate();
+    persistRun();
+    persistTemplateUpdateState();
+    throw error;
+  }
   showToast("Şablon içe aktarıldı", function(){
     state.template = prevTemplate;
     state.run = prevRun;
+    state.updateState = prevUpdateState;
+    state.activeNotice = prevNotice;
     persistTemplate();
     persistRun();
+    persistTemplateUpdateState();
     state.manualPhaseOverride = {};
     navIndex = 0;
     renderAll();
@@ -1260,6 +1615,46 @@ function showToast(msg, undoFn){
 /* ============================================================
    Edit mode
    ============================================================ */
+function templateComparisonShape(tpl){
+  return {
+    name:String((tpl && tpl.name) || ""),
+    sections:visibleSectionsList(tpl).map(function(section){
+      return {
+        id:section.id,
+        title:String(section.title || ""),
+        phase:section.phase || "saha",
+        blocking:!!section.blocking,
+        items:visibleItemsList(section).map(function(item){
+          return { id:item.id, text:String(item.text || ""), critical:!!item.critical };
+        })
+      };
+    })
+  };
+}
+function defaultTemplateForCurrentChoices(){
+  var expected = deepClone(DEFAULT_TEMPLATE);
+  var decisions = (state.updateState && state.updateState.optionalDecisions) || {};
+  var catalog = sortedTemplateUpdates();
+  var accepted = catalog.filter(function(update){
+    return update.type === "optional" && decisions[update.id] === "accepted";
+  });
+  if(!accepted.length) return expected;
+  var firstSequence = accepted[0].sequence;
+  catalog.forEach(function(update){
+    if(update.sequence < firstSequence) return;
+    if(update.type !== "mandatory" && decisions[update.id] !== "accepted") return;
+    (update.operations || []).forEach(function(op){ applyTemplateUpdateOperation(expected, op); });
+    expected.version = Math.max(templateVersion(expected), update.version || 0);
+  });
+  return expected;
+}
+function templateDiffersFromDefault(){
+  return JSON.stringify(templateComparisonShape(state.template)) !== JSON.stringify(templateComparisonShape(defaultTemplateForCurrentChoices()));
+}
+function updateResetTemplateButton(){
+  var button = document.getElementById("reset-template-btn");
+  if(button) button.hidden = !templateDiffersFromDefault();
+}
 function renderEdit(){
   var root = document.getElementById("edit-root");
   root.innerHTML = "";
@@ -1314,6 +1709,7 @@ function renderEdit(){
 
     root.appendChild(div);
   });
+  updateResetTemplateButton();
 }
 function escapeAttr(s){ return escapeHtml(s).replace(/"/g,"&quot;"); }
 
@@ -1372,16 +1768,17 @@ function editAction(action, ds, inputEl){
   } else if(action === "add-item"){
     var sec5 = tpl.sections.find(function(x){ return x.id===ds.sid; });
     if(sec5){
-      sec5.items.push({ id: uid("u-"), text:"Yeni madde", critical:false });
+      sec5.items.push({ id: uid("u-"), text:"Yeni madde", critical:false, origin:"user" });
     }
   }
   persistTemplate();
   var isStructure = ["section-up","section-down","delete-section","item-up","item-down","delete-item","add-item"].indexOf(action) >= 0;
   if(isStructure) renderEdit();
+  else updateResetTemplateButton();
 }
 
 function addSection(){
-  var s = { id: uid("u-s"), title:"Yeni bölüm", phase:"saha", blocking:false, items:[] };
+  var s = { id: uid("u-s"), title:"Yeni bölüm", phase:"saha", blocking:false, items:[], origin:"user" };
   state.template.sections.push(s);
   persistTemplate();
   renderEdit();
@@ -1390,13 +1787,21 @@ function addSection(){
 function resetTemplateToDefault(){
   var ok = window.confirm("Şablonu sıfırlamak yerel değişikliklerinizi silecek ve varsayılan şablonu geri yükleyecek. Bu işlem geri alınamaz. Devam edilsin mi?");
   if(!ok) return;
+  var optionalDecisions = deepClone((state.updateState && state.updateState.optionalDecisions) || {});
   state.template = deepClone(DEFAULT_TEMPLATE);
+  state.updateState = freshTemplateUpdateState();
+  state.updateState.optionalDecisions = optionalDecisions;
+  applyEligibleTemplateUpdates(false);
   persistTemplate();
+  persistTemplateUpdateState();
   ensureRunChecks(state.template, state.run);
+  state.run.templateSnapshot = deepClone(state.template.sections);
   persistRun();
   state.manualPhaseOverride = {};
   navIndex = 0;
   state.pendingTemplateUpdate = false;
+  state.activeNotice = null;
+  refreshTemplateUpdateNotice(runHasProgress(state.run));
   renderTemplateVersionBadge();
   renderEdit();
   showToast("Şablon sıfırlandı");
@@ -1440,12 +1845,7 @@ function bindGlobalEvents(){
       return;
     }
   });
-  listsRoot.addEventListener("input", function(e){
-    if(e.target.matches('[data-action="note-input"]')){
-      onNoteInput(e.target.dataset.id, e.target.value);
-    }
-  });
-
+  listsRoot.addEventListener("keydown", handleItemNoteKeydown);
   document.getElementById("nav-prev").addEventListener("click", function(){ navigateSection(-1); });
   document.getElementById("nav-next").addEventListener("click", function(){ navigateSection(1); });
   bindNewFlightBtn();
@@ -1482,7 +1882,17 @@ function bindGlobalEvents(){
   document.getElementById("f-date").addEventListener("change", function(){ state.run.date = this.value || todayStr(); persistRun(); });
   document.getElementById("f-aircraft").addEventListener("input", function(){ state.run.aircraft = this.value; persistRun(); });
   document.getElementById("f-wind").addEventListener("input", function(){ state.run.wind = this.value; persistRun(); });
-  document.getElementById("f-note").addEventListener("input", function(){ state.run.flightNote = this.value; persistRun(); });
+  document.getElementById("f-note").addEventListener("richchange", function(event){
+    state.run.flightNote = event.detail.text;
+    state.run.flightNoteHtml = event.detail.text ? event.detail.html : "";
+    persistRun();
+  });
+  if(!state.flightNoteEditor){
+    document.getElementById("f-note").addEventListener("input", function(){
+      state.run.flightNote = this.textContent || "";
+      persistRun();
+    });
+  }
 
   document.getElementById("menu-btn").addEventListener("click", function(){
     renderThemePicker();
@@ -1563,6 +1973,8 @@ function bindGlobalEvents(){
   document.getElementById("reset-template-btn").addEventListener("click", resetTemplateToDefault);
 
   document.getElementById("template-notice-dismiss").addEventListener("click", dismissNotice);
+  document.getElementById("template-update-accept").addEventListener("click", acceptOptionalTemplateUpdate);
+  document.getElementById("template-update-decline").addEventListener("click", declineOptionalTemplateUpdate);
 
   window.addEventListener("beforeprint", function(){
     if(state.view !== "run" && state.view !== "run-readonly"){

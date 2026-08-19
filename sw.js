@@ -1,4 +1,4 @@
-var CACHE_VERSION = "v4";
+var CACHE_VERSION = "v8";
 var CACHE_NAME = "ucus-oncesi-checklist-" + CACHE_VERSION;
 var ASSETS = [
   "./",
@@ -13,6 +13,7 @@ var ASSETS = [
   "./js/pdf-fonts.js",
   "./js/pdf-export.js",
   "./js/default-template.js",
+  "./js/rich-text-editor.js",
   "./js/app.js"
 ];
 

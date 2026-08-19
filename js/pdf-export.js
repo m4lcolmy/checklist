@@ -234,24 +234,64 @@ Flow.prototype.drawNoticeLine = function(text){
   this.y += 6.5;
 };
 
-/* ---------- notes / signature filler page (keeps page count even) ---------- */
-function drawNotesPage(doc){
-  doc.addPage();
+/* ---------- notes / signature pages ---------- */
+var NOTES_LINE_H = 4.2;
+var NOTES_SIG_ZONE_H = 26;
+
+function splitNoteLines(doc, note){
+  var normalized = String(note || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\t/g, "    ")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+  if(!normalized.trim()) return [];
+
+  // jsPDF wraps with the currently selected font, so measure with the exact
+  // face and size used when the note body is drawn.
+  setFont(doc, "normal", 9.2, INK);
+  var lines = [];
+  normalized.split("\n").forEach(function(paragraph){
+    if(paragraph === ""){
+      lines.push("");
+      return;
+    }
+    var wrapped = doc.splitTextToSize(paragraph, CONTENT_W);
+    if(!Array.isArray(wrapped)) wrapped = [String(wrapped || "")];
+    wrapped.forEach(function(line){ lines.push(line); });
+  });
+  return lines;
+}
+
+function notesPageChunks(lines, fullCapacity, finalCapacity){
+  if(!lines.length) return [[]];
+  if(lines.length <= finalCapacity) return [lines];
+
+  var pageCount = 1 + Math.ceil((lines.length - finalCapacity) / fullCapacity);
+  var finalSize = Math.min(finalCapacity, Math.ceil(lines.length / pageCount));
+  var leadingCount = pageCount - 1;
+  var leadingRemaining = lines.length - finalSize;
+  var chunks = [], offset = 0;
+  for(var i=0; i<leadingCount; i++){
+    var size = Math.ceil(leadingRemaining / (leadingCount - i));
+    chunks.push(lines.slice(offset, offset + size));
+    offset += size;
+    leadingRemaining -= size;
+  }
+  chunks.push(lines.slice(offset));
+  return chunks;
+}
+
+function drawNotesHeading(doc){
   var y = CONTENT_TOP;
   setFont(doc, "bold", 13, INK);
   doc.text("Notlar", MARGIN_L, y + 3);
   doc.setDrawColor.apply(doc, RULE);
   doc.setLineWidth(0.4);
   doc.line(MARGIN_L, y + 6, MARGIN_L + CONTENT_W, y + 6);
-  y += 14;
-  var sigZoneH = 26;
-  doc.setDrawColor.apply(doc, HAIRLINE);
-  doc.setLineWidth(0.25);
-  while(y < CONTENT_BOTTOM - sigZoneH){
-    doc.line(MARGIN_L, y, MARGIN_L + CONTENT_W, y);
-    y += 8.4;
-  }
-  var sigY = CONTENT_BOTTOM - sigZoneH + 6;
+  return y + 14;
+}
+
+function drawSignatureArea(doc){
+  var sigY = CONTENT_BOTTOM - NOTES_SIG_ZONE_H + 6;
   var boxW = (CONTENT_W - 8) / 2;
   [["İMZA", MARGIN_L], ["TARİH", MARGIN_L + boxW + 8]].forEach(function(pair){
     setFont(doc, "normal", 7.6, MUTED);
@@ -260,6 +300,54 @@ function drawNotesPage(doc){
     doc.setLineWidth(0.3);
     doc.line(pair[1], sigY + 12, pair[1] + boxW, sigY + 12);
   });
+}
+
+function drawNotesPages(doc, note){
+  var lines = splitNoteLines(doc, note);
+  var textY = CONTENT_TOP + 19;
+  var fullLineBottom = CONTENT_BOTTOM - 2;
+  var finalLineBottom = CONTENT_BOTTOM - NOTES_SIG_ZONE_H - 4;
+  var fullCapacity = Math.max(1, Math.floor((fullLineBottom - textY) / NOTES_LINE_H) + 1);
+  var finalCapacity = Math.max(1, Math.floor((finalLineBottom - textY) / NOTES_LINE_H) + 1);
+  var chunks = notesPageChunks(lines, fullCapacity, finalCapacity);
+
+  chunks.forEach(function(chunk, pageIndex){
+    var isFinal = pageIndex === chunks.length - 1;
+    doc.addPage();
+    var y = drawNotesHeading(doc);
+    if(lines.length){
+      setFont(doc, "bold", 7.6, MUTED);
+      doc.text("UÇUŞ NOTU", MARGIN_L, y);
+      y += 5;
+      setFont(doc, "normal", 9.2, INK);
+      chunk.forEach(function(line){
+        if(line) doc.text(line, MARGIN_L, y);
+        y += NOTES_LINE_H;
+      });
+      y += 1.5;
+    }
+
+    var ruledBottom = isFinal ? CONTENT_BOTTOM - NOTES_SIG_ZONE_H : CONTENT_BOTTOM;
+    doc.setDrawColor.apply(doc, HAIRLINE);
+    doc.setLineWidth(0.25);
+    while(y < ruledBottom){
+      doc.line(MARGIN_L, y, MARGIN_L + CONTENT_W, y);
+      y += 8.4;
+    }
+    if(isFinal) drawSignatureArea(doc);
+  });
+}
+
+function drawBlankNotesPage(doc){
+  doc.addPage();
+  var y = drawNotesHeading(doc);
+  doc.setDrawColor.apply(doc, HAIRLINE);
+  doc.setLineWidth(0.25);
+  while(y < CONTENT_BOTTOM - NOTES_SIG_ZONE_H){
+    doc.line(MARGIN_L, y, MARGIN_L + CONTENT_W, y);
+    y += 8.4;
+  }
+  drawSignatureArea(doc);
 }
 
 /* ---------- running header / footer, stamped after content is final ---------- */
@@ -289,6 +377,7 @@ function stampChrome(doc, docTitle, generatedAt){
    spec = {
      documentTitle, filename, generatedAt(Date),
      metaLines: [{label,value}], armStamp: string|null, notice: string|null,
+     flightNote: string|null,
      phases: [{ label, sections:[{ title, countText, items:[
        { number, text, critical, checked(bool|null), note(string|null) }
      ]}]}]
@@ -311,8 +400,10 @@ function generate(spec, openInNewTab){
     });
   });
 
-  if(doc.internal.getNumberOfPages() % 2 !== 0){
-    drawNotesPage(doc);
+  if(String(spec.flightNote || "").trim()){
+    drawNotesPages(doc, spec.flightNote);
+  } else if(doc.internal.getNumberOfPages() % 2 !== 0){
+    drawBlankNotesPage(doc);
   }
 
   stampChrome(doc, spec.documentTitle, formatDateTime(spec.generatedAt || new Date()));
