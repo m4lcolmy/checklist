@@ -1230,32 +1230,11 @@ function startNewFlight(){
 function bindNewFlightBtn(){
   var btn = document.getElementById("new-flight-btn");
   if(!btn) return;
-  var timer = null, holding = false;
-  function startHold(e){
-    if(e.button && e.button !== 0) return;
-    e.preventDefault();
-    holding = true;
-    btn.dataset.holding = "true";
-    timer = setTimeout(function(){
-      if(holding){
-        btn.dataset.holding = "false";
-        holding = false;
-        vibrate([50,50,50]);
-        startNewFlight();
-      }
-    }, 500);
-  }
-  function endHold(){
-    if(holding){
-      holding = false;
-      btn.dataset.holding = "false";
-      clearTimeout(timer);
-    }
-  }
-  btn.addEventListener("pointerdown", startHold);
-  btn.addEventListener("pointerup", endHold);
-  btn.addEventListener("pointerleave", endHold);
-  btn.addEventListener("pointercancel", endHold);
+  btn.addEventListener("click", function(){
+    if(!window.confirm("Yeni uçuşu kaydetmek istediğinize emin misiniz?")) return;
+    vibrate([50,50,50]);
+    startNewFlight();
+  });
   btn.addEventListener("contextmenu", function(e){ e.preventDefault(); });
 }
 

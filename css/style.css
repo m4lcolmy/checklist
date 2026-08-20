@@ -429,13 +429,6 @@ main{ flex:1; padding-bottom:calc(var(--bottombar-h) + env(safe-area-inset-botto
 .item-check-pop{ animation:check-pop 0.2s ease; }
 @keyframes check-pop{ 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
 
-/* ---------- new flight long-press ---------- */
-#new-flight-fill{
-  position:absolute; left:0; top:0; bottom:0; width:0;
-  background:var(--arm); opacity:0.2; pointer-events:none;
-}
-#new-flight-btn[data-holding="true"] #new-flight-fill{ width:100%; transition:width 0.5s linear; }
-
 /* ---------- phase-merged section ---------- */
 .section-title-row.phase-merged{ display:none; }
 
