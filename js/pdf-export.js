@@ -614,10 +614,29 @@ function generate(spec, openInNewTab){
   }
 
   stampChrome(doc, spec.documentTitle, formatDateTime(spec.generatedAt || new Date()));
+  if(doc.setProperties) doc.setProperties({ title: baseName(spec.filename) });
   if(openInNewTab){
-    window.open(doc.output("bloburl"), "_blank");
+    window.open(blobUrlNamed(doc, spec.filename), "_blank");
   } else {
     doc.save(spec.filename);
+  }
+}
+
+/* Filename without the .pdf suffix — shown as the document title in the
+   viewer's tab. */
+function baseName(filename){
+  return String(filename || "").replace(/\.pdf$/i, "");
+}
+
+/* A blob URL that still carries the filename, so saving from the preview
+   tab suggests it instead of the blob's uuid. Falls back to a plain blob
+   URL where the File constructor is unavailable. */
+function blobUrlNamed(doc, filename){
+  var blob = doc.output("blob");
+  try{
+    return URL.createObjectURL(new File([blob], filename, { type:"application/pdf" }));
+  }catch(e){
+    return URL.createObjectURL(blob);
   }
 }
 

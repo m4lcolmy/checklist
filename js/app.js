@@ -73,6 +73,13 @@ function formatTime(ts){
   var d = new Date(ts*1000);
   return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 }
+/* Flight date + time, used to name the exported PDF. Colons are not
+   safe in filenames, so the time is rendered as HH-MM. */
+function runDateTimeLabel(run){
+  var date = (run && run.date) || todayStr();
+  var time = formatTime(run && (run.endedAt || run.startedAt));
+  return time ? date + "_" + time.replace(":", "-") : date;
+}
 
 function templateVersion(tpl){
   return (tpl && typeof tpl.version === "number") ? tpl.version : 0;
@@ -1692,11 +1699,11 @@ function buildRunPdfSpec(run){
   );
   return {
     documentTitle: (tpl.name || "Uçuş") + " — " + run.id,
-    filename: "ucus-" + run.id + ".pdf",
+    filename: runDateTimeLabel(run) + ".pdf",
     generatedAt: new Date(),
     metaLines: [
       { label:"Tarih", value: run.date },
-      { label:"Uçak / Deneme no", value: run.aircraft },
+      { label:"İHA / Deneme no", value: run.aircraft },
       { label:"Rüzgar / Hava", value: run.wind }
     ],
     flightNote: run.flightNote || null,

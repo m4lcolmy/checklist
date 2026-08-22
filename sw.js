@@ -1,4 +1,4 @@
-var CACHE_VERSION = "v10";
+var CACHE_VERSION = "v11";
 var CACHE_NAME = "ucus-oncesi-checklist-" + CACHE_VERSION;
 var ASSETS = [
   "./",

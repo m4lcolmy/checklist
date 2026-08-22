@@ -34,7 +34,7 @@
 
 window.DEFAULT_TEMPLATE = {
   name: "Uçuş Öncesi Checklist",
-  version: 5,
+  version: 6,
 
   sections: [
 
@@ -43,7 +43,7 @@ window.DEFAULT_TEMPLATE = {
       id: "s1", title: "HAZIRLIK", phase: "hazirlik", blocking: false,
       items: [
         { id: "s1i1", text: "Pusula kalibrasyonları yapıldı", critical: false },
-        { id: "s1i2a", text: "Uçak bataryaları tam şarj", critical: false },
+        { id: "s1i2a", text: "İHA bataryaları tam şarj", critical: false },
         { id: "s1i2b", text: "Kumanda (verici) bataryası tam şarj", critical: false },
         { id: "s1i2c", text: "Anten Tracker bataryası şarjı yeterli seviyede", critical: false },
         { id: "s1i3", text: "Yer istasyonu (GCS) bilgisayarının şarjı tam", critical: false },
@@ -59,13 +59,12 @@ window.DEFAULT_TEMPLATE = {
         { id: "s1ai2", text: "Yedek GPS", critical: false },
         { id: "s1ai29", text: "Kumanda", critical: false },
         { id: "s1ai30", text: "Anten Tracker", critical: false },
-        { id: "s1ai3", text: "Uçak Pili / İnverter Pili", critical: false },
-        { id: "s1ai4", text: "Yedek Pil", critical: false },
-        { id: "s1ai31", text: "Yedek uçuş bataryası (şarjlı) ve yedek kumanda pili", critical: false },
+        { id: "s1ai3", text: "İHA Pili", critical: false },
+        { id: "s1ai35", text: "İnverter Pili", critical: false },
+        { id: "s1ai4", text: "Yedek İHA Pili", critical: false },
         { id: "s1ai5", text: "Servo Yekeler", critical: false },
-        { id: "s1ai32", text: "Yedek vida/somun, control horn", critical: false },
+        { id: "s1ai32", text: "Yedek vida/somun", critical: false },
         { id: "s1ai6", text: "Pervane Somunları", critical: false },
-        { id: "s1ai7", text: "Yedek Somun", critical: false },
         { id: "s1ai8", text: "Pervane Sıkma Teli", critical: false },
         { id: "s1ai9", text: "Tornavida Seti", critical: false },
         { id: "s1ai10", text: "Yıldız Tornavida", critical: false },
@@ -112,10 +111,10 @@ window.DEFAULT_TEMPLATE = {
       items: [
         { id: "s3i1", text: "Raspberry Pi - Pixhawk UART bağlantısı kontrol edildi", critical: false },
         { id: "s3i2", text: "Görev bilgisayarı (RPi) açıldı, wifi bağlantısı ssh ile test edildi, görüntü işleme yazılımı başlatıldı ve çalıştığı doğrulandı", critical: false },
-        { id: "s3i3", text: "Mission Planner'da uçağın GPS konumu (harita üzerinde ikon) geldi", critical: false },
+        { id: "s3i3", text: "Mission Planner'da İHA'nın GPS konumu (harita üzerinde ikon) geldi", critical: false },
         { id: "s3i4", text: "Mission Planner'da video aktarımı/HUD görüntüsü düzgün geliyor", critical: false },
         { id: "s3i5", text: "Anten tracker home pozisyonu doğru girildi", critical: false },
-        { id: "s3i6", text: "Anten tracker uçağı takip ediyor (kısa test hareketiyle doğrulandı)", critical: false },
+        { id: "s3i6", text: "Anten tracker İHA'yı takip ediyor (kısa test hareketiyle doğrulandı)", critical: false },
         { id: "s3i7", text: "OBS'de uçuş öncesi ekran kaydı başlatıldı", critical: false }
       ]
     },
@@ -207,6 +206,30 @@ window.TEMPLATE_UPDATES = [
     operations: [
       { op:"removeItem", id:"s1ai21", hard:true },
       { op:"setItemOrder", sectionId:"s1a", ids:["s1ai1","s1ai2","s1ai29","s1ai30","s1ai3","s1ai4","s1ai31","s1ai5","s1ai32","s1ai6","s1ai7","s1ai8","s1ai9","s1ai10","s1ai11","s1ai12","s1ai13","s1ai14","s1ai15","s1ai16","s1ai17","s1ai18","s1ai19","s1ai20","s1ai22","s1ai23","s1ai24","s1ai25","s1ai26","s1ai27","s1ai33","s1ai34","s1ai28"] }
+    ]
+  },
+  {
+    id: "2026-08-iha-terminology-and-batteries",
+    sequence: 3,
+    version: 6,
+    type: "mandatory",
+    title: "Zorunlu terminoloji ve takım çantası güncellemesi",
+    summary: "\"Uçak\" ifadeleri \"İHA\" olarak değiştirildi; İHA pili ile inverter pili ayrı maddelere bölündü, yedek pil \"Yedek İHA Pili\" oldu, control horn / yedek uçuş bataryası / yedek somun maddeleri kaldırıldı.",
+    operations: [
+      { op:"upsertItem", sectionId:"s1", afterId:"s1i1", item:{ id:"s1i2a", text:"İHA bataryaları tam şarj", critical:false } },
+      { op:"setItemOrder", sectionId:"s1", ids:["s1i1","s1i2a","s1i2b","s1i2c","s1i3","s1i4"] },
+
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai30", item:{ id:"s1ai3", text:"İHA Pili", critical:false } },
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai3", item:{ id:"s1ai35", text:"İnverter Pili", critical:false } },
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai35", item:{ id:"s1ai4", text:"Yedek İHA Pili", critical:false } },
+      { op:"removeItem", id:"s1ai31", hard:true },
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai5", item:{ id:"s1ai32", text:"Yedek vida/somun", critical:false } },
+      { op:"removeItem", id:"s1ai7", hard:true },
+      { op:"setItemOrder", sectionId:"s1a", ids:["s1ai1","s1ai2","s1ai29","s1ai30","s1ai3","s1ai35","s1ai4","s1ai5","s1ai32","s1ai6","s1ai8","s1ai9","s1ai10","s1ai11","s1ai12","s1ai13","s1ai14","s1ai15","s1ai16","s1ai17","s1ai18","s1ai19","s1ai20","s1ai22","s1ai23","s1ai24","s1ai25","s1ai26","s1ai27","s1ai33","s1ai34","s1ai28"] },
+
+      { op:"upsertItem", sectionId:"s3", afterId:"s3i2", item:{ id:"s3i3", text:"Mission Planner'da İHA'nın GPS konumu (harita üzerinde ikon) geldi", critical:false } },
+      { op:"upsertItem", sectionId:"s3", afterId:"s3i5", item:{ id:"s3i6", text:"Anten tracker İHA'yı takip ediyor (kısa test hareketiyle doğrulandı)", critical:false } },
+      { op:"setItemOrder", sectionId:"s3", ids:["s3i1","s3i2","s3i3","s3i4","s3i5","s3i6","s3i7"] }
     ]
   }
 ];
