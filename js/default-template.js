@@ -34,7 +34,7 @@
 
 window.DEFAULT_TEMPLATE = {
   name: "Uçuş Öncesi Checklist",
-  version: 6,
+  version: 7,
 
   sections: [
 
@@ -61,7 +61,7 @@ window.DEFAULT_TEMPLATE = {
         { id: "s1ai30", text: "Anten Tracker", critical: false },
         { id: "s1ai3", text: "İHA Pili", critical: false },
         { id: "s1ai35", text: "İnverter Pili", critical: false },
-        { id: "s1ai4", text: "Yedek İHA Pili", critical: false },
+        { id: "s1ai4", text: "İHA Yedek Pili", critical: false },
         { id: "s1ai5", text: "Servo Yekeler", critical: false },
         { id: "s1ai32", text: "Yedek vida/somun", critical: false },
         { id: "s1ai6", text: "Pervane Somunları", critical: false },
@@ -230,6 +230,18 @@ window.TEMPLATE_UPDATES = [
       { op:"upsertItem", sectionId:"s3", afterId:"s3i2", item:{ id:"s3i3", text:"Mission Planner'da İHA'nın GPS konumu (harita üzerinde ikon) geldi", critical:false } },
       { op:"upsertItem", sectionId:"s3", afterId:"s3i5", item:{ id:"s3i6", text:"Anten tracker İHA'yı takip ediyor (kısa test hareketiyle doğrulandı)", critical:false } },
       { op:"setItemOrder", sectionId:"s3", ids:["s3i1","s3i2","s3i3","s3i4","s3i5","s3i6","s3i7"] }
+    ]
+  },
+  {
+    id: "2026-08-rename-iha-yedek-pili",
+    sequence: 4,
+    version: 7,
+    type: "mandatory",
+    title: "Zorunlu takım çantası güncellemesi",
+    summary: "\"Yedek İHA Pili\" maddesi \"İHA Yedek Pili\" olarak yeniden adlandırıldı.",
+    operations: [
+      { op:"upsertItem", sectionId:"s1a", afterId:"s1ai35", item:{ id:"s1ai4", text:"İHA Yedek Pili", critical:false } },
+      { op:"setItemOrder", sectionId:"s1a", ids:["s1ai1","s1ai2","s1ai29","s1ai30","s1ai3","s1ai35","s1ai4","s1ai5","s1ai32","s1ai6","s1ai8","s1ai9","s1ai10","s1ai11","s1ai12","s1ai13","s1ai14","s1ai15","s1ai16","s1ai17","s1ai18","s1ai19","s1ai20","s1ai22","s1ai23","s1ai24","s1ai25","s1ai26","s1ai27","s1ai33","s1ai34","s1ai28"] }
     ]
   }
 ];
